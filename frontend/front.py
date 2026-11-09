@@ -16,49 +16,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Shared Nexora backend
 BACKEND_WS = "ws://127.0.0.1:8000/ws/chat"
 
 
 # ------------------------------------------------
-# 2. CUSTOM BUTTON STYLING
-# ------------------------------------------------
-
-st.markdown("""
-<style>
-
-div[data-testid="stFormSubmitButton"] button {
-    background-color: #7C3AED !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-}
-
-div[data-testid="stFormSubmitButton"] button:hover {
-    background-color: #6D28D9 !important;
-    color: white !important;
-}
-
-div[data-testid="stButton"]:has(button[kind="secondary"]) button {
-    background-color: #DC2626 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-}
-
-div[data-testid="stButton"]:has(button[kind="secondary"]) button:hover {
-    background-color: #B91C1C !important;
-    color: white !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-# ------------------------------------------------
-# 3. SESSION STATE
+# 2. SESSION STATE
 # ------------------------------------------------
 
 defaults = {
@@ -69,7 +31,9 @@ defaults = {
     "application_form_editor": "",
     "job_post_approved": False,
     "application_form_approved": False,
-    "drafts_saved": False
+    "drafts_saved": False,
+    "approved_payload": None,
+    "saved_file": None
 }
 
 for key, value in defaults.items():
@@ -79,12 +43,15 @@ for key, value in defaults.items():
 
 
 # ------------------------------------------------
-# 4. WEBSOCKET COMMUNICATION
+# 3. WEBSOCKET COMMUNICATION
 # ------------------------------------------------
 
 def send_backend_event(event):
 
-    uri = f"{BACKEND_WS}/{st.session_state.session_id}"
+    uri = (
+        f"{BACKEND_WS}/"
+        f"{st.session_state.session_id}"
+    )
 
     with connect(
         uri,
@@ -97,7 +64,9 @@ def send_backend_event(event):
         connected = json.loads(websocket.recv())
 
         if connected.get("type") != "connected":
-            raise ConnectionError("WebSocket connection failed.")
+            raise ConnectionError(
+                "WebSocket connection failed."
+            )
 
         websocket.send(json.dumps(event))
 
@@ -115,7 +84,7 @@ def send_message(message):
         return result.get("data", {})
 
     raise RuntimeError(
-        result.get("message", "Unexpected backend response.")
+        result.get("message", "Could not generate drafts.")
     )
 
 
@@ -128,67 +97,75 @@ def save_drafts(job_post, application_form):
     })
 
 
-def approve_job_post():
+def approve_job_post(job_post, application_form):
 
     return send_backend_event({
-        "type": "approve_job_post"
+        "type": "approve_job_post",
+        "job_post": job_post,
+        "application_form": application_form
     })
 
 
-def approve_application_form():
+def approve_application_form(job_post, application_form):
 
     return send_backend_event({
-        "type": "approve_application_form"
+        "type": "approve_application_form",
+        "job_post": job_post,
+        "application_form": application_form
     })
 
 
 # ------------------------------------------------
-# 5. HELPER: SAVE CURRENT EDITS
+# 4. READ THE LATEST EDITED JSON
 # ------------------------------------------------
 
-def sync_drafts():
+def get_edited_drafts():
 
-    updated_job_post = json.loads(
-        st.session_state.job_post_editor
-    )
+    try:
 
-    updated_application_form = json.loads(
-        st.session_state.application_form_editor
-    )
-
-    result = save_drafts(
-        updated_job_post,
-        updated_application_form
-    )
-
-    if result.get("type") != "drafts_updated":
-
-        raise RuntimeError(
-            result.get("message", "Could not save drafts.")
+        updated_job_post = json.loads(
+            st.session_state.job_post_editor
         )
 
-    st.session_state.job_post = updated_job_post
-    st.session_state.application_form = updated_application_form
+        updated_application_form = json.loads(
+            st.session_state.application_form_editor
+        )
 
-    st.session_state.drafts_saved = True
+        if not isinstance(updated_job_post, dict):
+            raise ValueError(
+                "Job post JSON must be an object."
+            )
+
+        if not isinstance(updated_application_form, dict):
+            raise ValueError(
+                "Application form JSON must be an object."
+            )
+
+        return updated_job_post, updated_application_form
+
+    except json.JSONDecodeError as error:
+
+        raise ValueError(
+            f"Invalid JSON. Please check the format: {error}"
+        )
 
 
 # ------------------------------------------------
-# 6. HEADER
+# 5. HEADER
 # ------------------------------------------------
 
 st.title("💼📑 Job Post Generator")
 
 st.write(
     "Enter job requirements and let AI generate "
-    "a professional job post and candidate application form."
+    "a job post and candidate application form."
 )
 
 st.divider()
 
 
 # ------------------------------------------------
-# 7. INITIAL PROMPT
+# 6. INITIAL JOB REQUIREMENTS
 # ------------------------------------------------
 
 if not st.session_state.job_post:
@@ -216,12 +193,14 @@ if not st.session_state.job_post:
 
         if not user_prompt.strip():
 
-            st.warning("Please enter job requirements.")
+            st.warning(
+                "Please enter job requirements."
+            )
 
         else:
 
             with st.spinner(
-                "AI is generating your job post and application questions..."
+                "AI is generating both drafts..."
             ):
 
                 try:
@@ -229,7 +208,6 @@ if not st.session_state.job_post:
                     result = send_message(user_prompt)
 
                     if result.get("type") != "draft":
-
                         raise RuntimeError(
                             result.get(
                                 "message",
@@ -237,128 +215,152 @@ if not st.session_state.job_post:
                             )
                         )
 
-                    st.session_state.job_post = result["job_post"]
+                    # Store generated job post
+                    st.session_state.job_post = (
+                        result["job_post"]
+                    )
 
+                    # Store generated application form
                     st.session_state.application_form = (
                         result["application_form"]
                     )
 
+                    # Convert dictionaries into editable JSON text
                     st.session_state.job_post_editor = json.dumps(
                         result["job_post"],
-                        indent=4
+                        indent=4,
+                        ensure_ascii=False
                     )
 
                     st.session_state.application_form_editor = json.dumps(
                         result["application_form"],
-                        indent=4
+                        indent=4,
+                        ensure_ascii=False
                     )
 
                     st.session_state.job_post_approved = False
                     st.session_state.application_form_approved = False
                     st.session_state.drafts_saved = True
 
-                    st.success("Both drafts generated successfully!")
+                    st.session_state.approved_payload = None
+                    st.session_state.saved_file = None
+
+                    st.success(
+                        "Both drafts generated successfully!"
+                    )
 
                     st.rerun()
 
                 except Exception as error:
 
-                    st.error("Could not generate the drafts.")
-
-                    st.exception(error)
+                    st.error(
+                        f"Could not generate drafts: {error}"
+                    )
 
 
 # ------------------------------------------------
-# 8. GENERATED DRAFTS
+# 7. DISPLAY GENERATED DRAFTS
 # ------------------------------------------------
 
-if st.session_state.job_post and st.session_state.application_form:
+if (
+    st.session_state.job_post
+    and st.session_state.application_form
+):
 
-    job_post = st.session_state.job_post
-    application_form = st.session_state.application_form
+    st.success(
+        "Both AI-generated drafts are ready for review."
+    )
 
-    st.success("Both AI-generated drafts are ready for review.")
-
-    job_column, form_column = st.columns(2, gap="large")
-
+    # ---------------------------------------------
     # JOB POST
+    # ---------------------------------------------
 
-    with job_column:
+    st.subheader("1. Job Description")
 
-        st.subheader("1. Job Description")
+    st.text_area(
+        "Edit Job Post JSON",
+        key="job_post_editor",
+        height=350
+    )
 
-        st.text_area(
-            "Edit Job Post JSON",
-            key="job_post_editor",
-            height=550
-        )
+    st.markdown("**Job Post Preview**")
 
-        st.markdown("**Job Post Preview**")
+    st.markdown(
+        f"### {st.session_state.job_post.get('job_title', 'Job Title')}"
+    )
 
-        st.markdown(
-            f"### {job_post.get('job_title') or 'Job Title'}"
-        )
+    st.write(
+        st.session_state.job_post.get("role_summary", "")
+    )
 
-        st.write(job_post.get("role_summary", ""))
+    st.markdown("**Responsibilities**")
 
-        st.markdown("**Responsibilities**")
+    for item in st.session_state.job_post.get(
+        "responsibilities", []
+    ):
+        st.markdown(f"- {item}")
 
-        for item in job_post.get("responsibilities", []):
-            st.markdown(f"- {item}")
+    st.markdown("**Required Skills**")
 
-        st.markdown("**Required Skills**")
+    for skill in st.session_state.job_post.get(
+        "required_skills", []
+    ):
+        st.markdown(f"- {skill}")
 
-        for skill in job_post.get("required_skills", []):
-            st.markdown(f"- {skill}")
-
-        if st.session_state.job_post_approved:
-            st.success("Job post approved.")
-        else:
-            st.info("Job post approval pending.")
-
-    # APPLICATION FORM
-
-    with form_column:
-
-        st.subheader("2. Candidate Application Form")
-
-        st.text_area(
-            "Edit Application Form JSON",
-            key="application_form_editor",
-            height=550
-        )
-
-        st.markdown("**Application Questions Preview**")
-
-        st.markdown(
-            f"**{application_form.get('form_title', 'Application Form')}**"
-        )
-
-        for index, question in enumerate(
-            application_form.get("questions", []),
-            start=1
-        ):
-
-            st.markdown(
-                f"**{index}. {question.get('question', '')}**"
-            )
-
-            st.caption(
-                f"Type: {question.get('type', '')} | "
-                f"Required: {question.get('required', False)}"
-            )
-
-            for option in question.get("options", []):
-                st.write(f"- {option}")
-
-        if st.session_state.application_form_approved:
-            st.success("Application questions approved.")
-        else:
-            st.info("Application questions approval pending.")
-
-    # SAVE BOTH DRAFTS
+    if st.session_state.job_post_approved:
+        st.success("Job post approved.")
+    else:
+        st.info("Job post approval pending.")
 
     st.divider()
+
+    # ---------------------------------------------
+    # APPLICATION FORM
+    # ---------------------------------------------
+
+    st.subheader("2. Candidate Application Form")
+
+    st.text_area(
+        "Edit Application Form JSON",
+        key="application_form_editor",
+        height=350
+    )
+
+    st.markdown("**Application Form Preview**")
+
+    st.markdown(
+        f"**{st.session_state.application_form.get('form_title', 'Application Form')}**"
+    )
+
+    for index, question in enumerate(
+        st.session_state.application_form.get("questions", []),
+        start=1
+    ):
+
+        st.markdown(
+            f"**{index}. {question.get('question', '')}**"
+        )
+
+        st.caption(
+            f"Type: {question.get('type', '')} | "
+            f"Required: {question.get('required', False)}"
+        )
+
+        for option in question.get("options", []):
+            st.write(f"- {option}")
+
+    if st.session_state.application_form_approved:
+        st.success("Application questions approved.")
+    else:
+        st.info("Application questions approval pending.")
+
+    # ---------------------------------------------
+    # SAVE BOTH DRAFTS
+    # ---------------------------------------------
+
+    st.divider()
+
+    st.subheader("3. Save Drafts")
 
     if st.button(
         "Save Both Drafts",
@@ -367,88 +369,181 @@ if st.session_state.job_post and st.session_state.application_form:
 
         try:
 
-            sync_drafts()
+            updated_job_post, updated_application_form = (
+                get_edited_drafts()
+            )
 
-            st.session_state.job_post_approved = False
-            st.session_state.application_form_approved = False
+            result = save_drafts(
+                updated_job_post,
+                updated_application_form
+            )
 
-            st.success("Both edited drafts saved successfully.")
+            if result.get("type") != "drafts_updated":
+                raise RuntimeError(
+                    result.get(
+                        "message",
+                        "Could not save drafts."
+                    )
+                )
+
+            st.session_state.job_post = updated_job_post
+            st.session_state.application_form = updated_application_form
+
+            st.session_state.job_post_approved = (
+                result.get("job_post_approved", False)
+            )
+
+            st.session_state.application_form_approved = (
+                result.get("application_form_approved", False)
+            )
+
+            st.session_state.drafts_saved = True
+
+            st.session_state.approved_payload = None
+            st.session_state.saved_file = None
+
+            st.success(
+                "Both edited drafts saved successfully."
+            )
 
             st.rerun()
 
-        except (json.JSONDecodeError, RuntimeError) as error:
+        except Exception as error:
 
-            st.error(f"Could not save drafts: {error}")
+            st.error(
+                f"Could not save drafts: {error}"
+            )
 
-    # APPROVAL BUTTONS
-
-    approval_column1, approval_column2 = st.columns(2)
-
-    with approval_column1:
-
-        if st.button(
-            "Approve Job Post",
-            disabled=st.session_state.job_post_approved,
-            use_container_width=True
-        ):
-
-            try:
-
-                sync_drafts()
-
-                result = approve_job_post()
-
-                if result.get("type") == "approval":
-
-                    st.session_state.job_post_approved = True
-
-                    st.success("Job post approved!")
-
-                    st.rerun()
-
-                raise RuntimeError(
-                    result.get("message", "Approval failed.")
-                )
-
-            except Exception as error:
-
-                st.error(f"Approval failed: {error}")
-
-    with approval_column2:
-
-        if st.button(
-            "Approve Application Questions",
-            disabled=st.session_state.application_form_approved,
-            use_container_width=True
-        ):
-
-            try:
-
-                sync_drafts()
-
-                result = approve_application_form()
-
-                if result.get("type") == "approval":
-
-                    st.session_state.application_form_approved = True
-
-                    st.success("Application questions approved!")
-
-                    st.rerun()
-
-                raise RuntimeError(
-                    result.get("message", "Approval failed.")
-                )
-
-            except Exception as error:
-
-                st.error(f"Approval failed: {error}")
-
-    # FINAL APPROVAL STATUS
+    # ---------------------------------------------
+    # APPROVAL SECTION
+    # ---------------------------------------------
 
     st.divider()
 
-    st.subheader("3. Final Approval Status")
+    st.subheader("4. Approval Section")
+
+    st.write(
+        "Each approval button automatically sends "
+        "the latest edited versions to the backend."
+    )
+
+    # Approve Job Post
+    if st.button(
+        "Approve Job Post",
+        disabled=st.session_state.job_post_approved,
+        use_container_width=True
+    ):
+
+        try:
+
+            updated_job_post, updated_application_form = (
+                get_edited_drafts()
+            )
+
+            result = approve_job_post(
+                updated_job_post,
+                updated_application_form
+            )
+
+            if result.get("type") == "error":
+                raise RuntimeError(result.get("message"))
+
+            if result.get("type") != "approval":
+                raise RuntimeError(
+                    "Unexpected approval response."
+                )
+
+            st.session_state.job_post = updated_job_post
+            st.session_state.application_form = updated_application_form
+
+            st.session_state.job_post_approved = (
+                result.get("job_post_approved", False)
+            )
+
+            st.session_state.application_form_approved = (
+                result.get("application_form_approved", False)
+            )
+
+            st.session_state.approved_payload = (
+                result.get("approved_payload")
+            )
+
+            st.session_state.saved_file = (
+                result.get("saved_file")
+            )
+
+            st.success(result.get("message"))
+
+            st.rerun()
+
+        except Exception as error:
+
+            st.error(
+                f"Job post approval failed: {error}"
+            )
+
+    # Approve Application Questions
+    if st.button(
+        "Approve Application Questions",
+        disabled=st.session_state.application_form_approved,
+        use_container_width=True
+    ):
+
+        try:
+
+            updated_job_post, updated_application_form = (
+                get_edited_drafts()
+            )
+
+            result = approve_application_form(
+                updated_job_post,
+                updated_application_form
+            )
+
+            if result.get("type") == "error":
+                raise RuntimeError(result.get("message"))
+
+            if result.get("type") != "approval":
+                raise RuntimeError(
+                    "Unexpected approval response."
+                )
+
+            st.session_state.job_post = updated_job_post
+            st.session_state.application_form = updated_application_form
+
+            st.session_state.job_post_approved = (
+                result.get("job_post_approved", False)
+            )
+
+            st.session_state.application_form_approved = (
+                result.get("application_form_approved", False)
+            )
+
+            st.session_state.approved_payload = (
+                result.get("approved_payload")
+            )
+
+            st.session_state.saved_file = (
+                result.get("saved_file")
+            )
+
+            st.success(result.get("message"))
+
+            st.rerun()
+
+        except Exception as error:
+
+            st.error(
+                f"Application form approval failed: {error}"
+            )
+
+    # ---------------------------------------------
+    # FINAL APPROVAL STATUS
+    # ---------------------------------------------
+
+    st.divider()
+
+    st.subheader("5. Final Approval Status")
 
     st.write(
         "Job Post:",
@@ -468,31 +563,29 @@ if st.session_state.job_post and st.session_state.application_form:
     ):
 
         st.success(
-            "Both drafts are approved and ready for handoff."
+            "Both drafts are approved!"
         )
 
-        approved_payload = {
-            "job_post": st.session_state.job_post,
-            "application_form": st.session_state.application_form,
-            "approved": True
-        }
+        if st.session_state.saved_file:
 
-        st.download_button(
-            "Download Approved JSON",
-            data=json.dumps(approved_payload, indent=4),
-            file_name="approved_job_application.json",
-            mime="application/json",
-            use_container_width=True
-        )
+            st.write("Combined JSON saved successfully.")
 
-        st.info(
-            "Your teammate can use this JSON payload "
-            "for the Google Forms integration."
-        )
+            st.code(
+                st.session_state.saved_file,
+                language="text"
+            )
+
+        if st.session_state.approved_payload:
+
+            st.markdown("**Combined JSON Output**")
+
+            st.json(
+                st.session_state.approved_payload
+            )
 
 
 # ------------------------------------------------
-# 9. START NEW JOB POST
+# 8. START A NEW JOB POST
 # ------------------------------------------------
 
 st.divider()
@@ -514,6 +607,10 @@ if st.button(
 
     st.session_state.job_post_approved = False
     st.session_state.application_form_approved = False
+
     st.session_state.drafts_saved = False
+
+    st.session_state.approved_payload = None
+    st.session_state.saved_file = None
 
     st.rerun()
