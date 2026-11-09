@@ -21,6 +21,9 @@ elif st.session_state.page == "login":
     login()
 elif st.session_state.page == "employees":
     employee()
+elif st.session_state.page in ["events", "announcement"]:
+    from announcement import announcement
+    announcement()
 
 
 
