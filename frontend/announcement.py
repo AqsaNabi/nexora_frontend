@@ -209,10 +209,19 @@ def extract_model_text(data):
 def extract_title_and_content(response_text):
     """
     Parses TITLE and ANNOUNCEMENT content safely.
-    Guarantees no '[Title] \\n' or placeholder tokens leak into the title.
+    Guarantees no '[Title]', '[Content]', '\\n' or placeholder tokens leak.
     """
     response_text = str(response_text).strip()
     if not response_text:
+        return "", ""
+
+    # --- Reject entire response if it looks like a prompt template / thinking trace ---
+    # e.g. "TITLE: [Title] \n ANNOUNCEMENT: [Content]"
+    placeholder_pattern = re.compile(
+        r"TITLE\s*:\s*\[Title\]", re.IGNORECASE
+    )
+    if placeholder_pattern.search(response_text):
+        # This is a leaked prompt template — ignore it entirely
         return "", ""
 
     # Match TITLE:... up to ANNOUNCEMENT:
@@ -231,7 +240,7 @@ def extract_title_and_content(response_text):
     if title_match:
         title = title_match.group(1).strip()
     else:
-        # Fallback if no explicit ANNOUNCEMENT tag
+        # Fallback: first line may start with TITLE:
         lines = response_text.split("\n", 1)
         first_line = lines[0]
         if first_line.upper().startswith("TITLE:"):
@@ -244,11 +253,14 @@ def extract_title_and_content(response_text):
     else:
         content = response_text
 
-    # Clean title
-    title = title.replace("[Title]", "").replace("\\n", " ").replace("\n", " ").strip()
+    # --- Aggressively clean title ---
+    # Remove any remaining bracketed placeholders like [Title], [Content], etc.
+    title = re.sub(r"\[.*?\]", "", title)
+    title = title.replace("\\n", " ").replace("\n", " ").strip()
     title = " ".join(title.split())
 
-    # Clean content of accidental labels
+    # --- Aggressively clean content ---
+    # Strip leading TITLE: line if accidentally included
     content = re.sub(
         r"^\s*TITLE\s*:.*?(?=\n)",
         "",
@@ -257,6 +269,7 @@ def extract_title_and_content(response_text):
         flags=re.IGNORECASE | re.DOTALL,
     ).strip()
 
+    # Strip leading ANNOUNCEMENT: prefix
     content = re.sub(
         r"^\s*ANNOUNCEMENT\s*:\s*",
         "",
@@ -265,6 +278,8 @@ def extract_title_and_content(response_text):
         flags=re.IGNORECASE,
     ).strip()
 
+    # Remove bracketed placeholders from content too
+    content = re.sub(r"\[Content\]|\[Title\]", "", content, flags=re.IGNORECASE)
     content = re.sub(r"\n{3,}", "\n\n", content)
 
     if not title:
@@ -698,6 +713,8 @@ def announcement():
             "emails to all selected recipients, or reject the current draft."
         )
 
+        is_approved = st.session_state.status == "Approved"
+
         approve_col, reject_col = st.columns(2)
 
         with approve_col:
@@ -706,6 +723,7 @@ def announcement():
                 type="primary",
                 use_container_width=True,
                 on_click=approve_announcement,
+                disabled=is_approved,
             )
 
         with reject_col:
@@ -713,7 +731,11 @@ def announcement():
                 "❌ Reject draft",
                 use_container_width=True,
                 on_click=reject_announcement,
+                disabled=is_approved,
             )
+
+        if is_approved:
+            st.success("✅ This announcement has been approved and distributed. No further changes can be made.")
 
     # -------------------------------------------------
     # WORKFLOW STATUS
