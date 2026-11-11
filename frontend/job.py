@@ -1,13 +1,13 @@
 
 import json
 import uuid
+import os
+import sys
 
 import streamlit as st
 import websocket
 
 from api import api_request
-import os
-import sys
 
 PROJECT_ROOT = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
@@ -15,8 +15,8 @@ PROJECT_ROOT = os.path.dirname(
 
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-from backend.authen.auth import create_token
 
+from backend.authen.auth import create_token
 
 
 # ============================================================
@@ -286,6 +286,10 @@ def send_websocket_event(event):
         # Get the existing JWT token from main Nexora login.
         token = st.session_state.get("token")
 
+        # Remove unwanted spaces and newline characters.
+        if token:
+            token = str(token).strip()
+
         if not token:
 
             st.error(
@@ -480,12 +484,19 @@ def process_pending_message(processing_placeholder):
 
     if action == "answer":
 
+        # IMPORTANT:
+        # A normal answer must NOT clear the previously
+        # generated job post or application form.
+
         assistant_message = (
             data.get("answer")
             or "I don't know the answer to that."
         )
 
     elif action == "draft":
+
+        # Only update saved drafts when the backend
+        # actually returns a new or modified draft.
 
         update_drafts_from_response(response)
 
@@ -728,13 +739,6 @@ def display_complete_preview():
     if not job_post or not application_form:
         return
 
-    st.header("Complete Preview")
-
-    st.caption(
-        "Review the generated job description and "
-        "application form below."
-    )
-
     # --------------------------------------------------
     # 1. JOB DESCRIPTION
     # --------------------------------------------------
@@ -803,6 +807,11 @@ def display_complete_preview():
                         f"{question.get('required', False)}"
                     )
 
+                    options = question.get("options", [])
+
+                    if options:
+                        st.caption(f"Options: {options}")
+
                 else:
 
                     st.write(question)
@@ -817,10 +826,6 @@ def display_complete_preview():
 # ============================================================
 
 def display_json_editor():
-
-    st.divider()
-
-    st.subheader("3. Combined JSON Output")
 
     st.caption(
         "Review or edit the complete JSON containing "
@@ -843,6 +848,46 @@ def display_json_editor():
 
 def display_review_section():
 
+    job_post = st.session_state.current_job_post
+
+    application_form = (
+        st.session_state.current_application_form
+    )
+
+    # Do not display dropdowns before the first generation.
+    if not job_post or not application_form:
+        return
+
+    st.divider()
+
+    st.subheader("Generated Job Post & Application Form")
+
+    # --------------------------------------------------
+    # DROPDOWN 1: COMPLETE PREVIEW
+    # --------------------------------------------------
+
+    with st.expander(
+        "📄 Complete Preview - Job Description & Application Form",
+        expanded=False
+    ):
+
+        display_complete_preview()
+
+    # --------------------------------------------------
+    # DROPDOWN 2: COMBINED JSON OUTPUT
+    # --------------------------------------------------
+
+    with st.expander(
+        "📋 Combined JSON Output",
+        expanded=False
+    ):
+
+        display_json_editor()
+
+    # --------------------------------------------------
+    # APPROVAL STATUS
+    # --------------------------------------------------
+
     if st.session_state.is_approved:
 
         st.success(
@@ -856,22 +901,9 @@ def display_review_section():
 
         return
 
-    if not st.session_state.current_job_post:
-        return
-
-    if not st.session_state.current_application_form:
-        return
-
-    # 1. Job Description
-    # 2. Application Form
-
-    display_complete_preview()
-
-    # 3. Combined JSON Output
-
-    display_json_editor()
-
-    # Final Approval
+    # --------------------------------------------------
+    # FINAL APPROVAL
+    # --------------------------------------------------
 
     st.divider()
 
@@ -892,8 +924,6 @@ def display_review_section():
 
 def job_post_generator():
 
-   
-
     initialize_session_state()
 
     # Temporary token for independent testing
@@ -901,8 +931,6 @@ def job_post_generator():
         st.session_state.token = create_token("test@example.com")
 
     apply_styling()
-
-    
 
     # LEFT SIDEBAR
     display_sidebar()
