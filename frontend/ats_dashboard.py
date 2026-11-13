@@ -127,135 +127,8 @@ st.markdown(
 
 
 # =========================================================
-# 3. HELPER FUNCTIONS
+# 3. HEADER
 # =========================================================
-
-def get_value(data, *keys, default=None):
-
-    if not isinstance(data, dict):
-        return default
-
-    for key in keys:
-
-        if key in data and data[key] is not None:
-            return data[key]
-
-    return default
-
-
-def extract_list(response_data, *possible_keys):
-
-    if isinstance(response_data, list):
-        return response_data
-
-    if isinstance(response_data, dict):
-
-        for key in possible_keys:
-
-            value = response_data.get(key)
-
-            if isinstance(value, list):
-                return value
-
-    return []
-
-
-def format_score(score):
-
-    if score is None:
-        return "N/A"
-
-    try:
-        return f"{float(score):.2f}%"
-
-    except (ValueError, TypeError):
-        return str(score)
-
-
-# =========================================================
-# 4. API CALL FUNCTIONS
-# =========================================================
-
-def get_dashboard_data():
-
-    try:
-
-        response = requests.get(
-            f"{API_URL}/api/ats/dashboard",
-            timeout=REQUEST_TIMEOUT
-        )
-
-        response.raise_for_status()
-
-        return response.json()
-
-    except requests.exceptions.RequestException as error:
-
-        st.error(f"Unable to fetch dashboard data: {error}")
-        return None
-
-    except ValueError:
-
-        st.error("Dashboard API returned an invalid JSON response.")
-        return None
-
-
-def get_applications(post_id):
-
-    try:
-
-        response = requests.get(
-            f"{API_URL}/api/ats/jobs/{post_id}/applications",
-            timeout=REQUEST_TIMEOUT
-        )
-
-        response.raise_for_status()
-
-        return response.json()
-
-    except requests.exceptions.RequestException as error:
-
-        st.error(f"Unable to fetch candidate applications: {error}")
-        return None
-
-    except ValueError:
-
-        st.error("Applications API returned an invalid JSON response.")
-        return None
-
-
-# =========================================================
-# 5. HEADER
-# =========================================================
-# =========================================================
-# 5. HEADER
-# =========================================================
-
-st.markdown(
-    """
-    <style>
-    .ta-header {
-        background: linear-gradient(110deg, #172554, #1d4ed8, #6d28d9);
-        padding: 25px 30px;
-        border-radius: 15px;
-        margin-bottom: 25px;
-    }
-
-    .ta-title {
-        color: white;
-        font-size: 30px;
-        font-weight: 800;
-    }
-
-    .ta-subtitle {
-        color: #DBEAFE;
-        font-size: 14px;
-        margin-top: 7px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 st.markdown(
     '<div class="ta-header">'
@@ -267,11 +140,32 @@ st.markdown(
     '</div>',
     unsafe_allow_html=True
 )
-#========================================
-# 6. FETCH DASHBOARD DATA
+
+
+# =========================================================
+# 4. FETCH DASHBOARD DATA
 # =========================================================
 
-dashboard_data = get_dashboard_data()
+dashboard_data = None
+
+try:
+
+    response = requests.get(
+        f"{API_URL}/api/ats/dashboard",
+        timeout=REQUEST_TIMEOUT
+    )
+
+    response.raise_for_status()
+    dashboard_data = response.json()
+
+except requests.exceptions.RequestException as error:
+
+    st.error(f"Unable to fetch dashboard data: {error}")
+
+except ValueError:
+
+    st.error("Dashboard API returned an invalid JSON response.")
+
 
 if dashboard_data is None:
 
@@ -283,23 +177,32 @@ if dashboard_data is None:
     st.stop()
 
 
-jobs = extract_list(
-    dashboard_data,
-    "jobs",
-    "job_posts",
-    "recruitment_posts",
-    "data"
-)
+jobs = []
+
+if isinstance(dashboard_data, list):
+
+    jobs = dashboard_data
+
+elif isinstance(dashboard_data, dict):
+
+    for key in ["jobs", "job_posts", "recruitment_posts", "data"]:
+
+        value = dashboard_data.get(key)
+
+        if isinstance(value, list):
+
+            jobs = value
+            break
+
 
 if not jobs:
 
     st.info("No job postings are currently available.")
-
     st.stop()
 
 
 # =========================================================
-# 7. DASHBOARD OVERVIEW
+# 5. DASHBOARD OVERVIEW
 # =========================================================
 
 st.markdown(
@@ -311,26 +214,46 @@ total_applications = 0
 
 for job in jobs:
 
-    post_id = get_value(
-        job,
-        "post_id",
-        "id"
-    )
+    post_id = job.get("post_id")
 
     if post_id is not None:
 
-        applications_response = get_applications(post_id)
+        try:
 
-        if applications_response is not None:
-
-            job_applications = extract_list(
-                applications_response,
-                "applications",
-                "candidates",
-                "data"
+            response = requests.get(
+                f"{API_URL}/api/ats/jobs/{post_id}/applications",
+                timeout=REQUEST_TIMEOUT
             )
 
+            response.raise_for_status()
+            applications_response = response.json()
+
+            job_applications = []
+
+            if isinstance(applications_response, list):
+
+                job_applications = applications_response
+
+            elif isinstance(applications_response, dict):
+
+                for key in ["applications", "candidates", "data"]:
+
+                    value = applications_response.get(key)
+
+                    if isinstance(value, list):
+
+                        job_applications = value
+                        break
+
             total_applications += len(job_applications)
+
+        except requests.exceptions.RequestException:
+
+            pass
+
+        except ValueError:
+
+            pass
 
 
 metric1, metric2 = st.columns(2)
@@ -351,7 +274,7 @@ with metric2:
 
 
 # =========================================================
-# 8. SELECT JOB POSTING
+# 6. SELECT JOB POSTING
 # =========================================================
 
 st.markdown(
@@ -361,32 +284,34 @@ st.markdown(
 
 job_options = {}
 
-for job in jobs:
+for index, job in enumerate(jobs):
 
-    post_id = get_value(
-        job,
-        "post_id",
-        "id"
-    )
+    post_id = job.get("post_id")
+    job_title = job.get("job_title")
 
-    if post_id is None:
-        continue
+    if post_id is not None:
 
-    job_title = get_value(
-        job,
-        "job_title",
-        "title",
-        "position",
-        default=f"Job {post_id}"
-    )
+        if job_title and str(job_title).strip():
 
-    job_options[str(job_title)] = post_id
+            dropdown_label = str(job_title).strip()
+
+        else:
+
+            dropdown_label = (
+                f"Job title missing for Post ID: {post_id}"
+            )
+
+        # Handle duplicate job titles
+        if dropdown_label in job_options:
+
+            dropdown_label = f"{dropdown_label} ({index + 1})"
+
+        job_options[dropdown_label] = post_id
 
 
 if not job_options:
 
     st.error("No valid job postings were returned by the backend.")
-
     st.stop()
 
 
@@ -397,19 +322,18 @@ selected_job_label = st.selectbox(
 
 selected_post_id = job_options[selected_job_label]
 
-post_id_key = str(selected_post_id)
+selected_job = {}
 
-selected_job = next(
-    (
-        job for job in jobs
-        if str(get_value(job, "post_id", "id")) == post_id_key
-    ),
-    {}
-)
+for job in jobs:
+
+    if str(job.get("post_id")) == str(selected_post_id):
+
+        selected_job = job
+        break
 
 
 # =========================================================
-# 9. JOB INFORMATION
+# 7. JOB INFORMATION
 # =========================================================
 
 st.markdown(
@@ -417,36 +341,31 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-job_title = get_value(
-    selected_job,
-    "job_title",
-    "title",
-    "position",
-    default="Untitled Job"
-)
+job_title = selected_job.get("job_title")
 
-job_description = get_value(
-    selected_job,
+if not job_title or not str(job_title).strip():
+
+    job_title = "Job title not available"
+
+
+job_description = selected_job.get(
     "job_description",
-    "description",
-    "job_post",
-    default="No job description available."
+    "No job description available."
 )
 
-generated_date = get_value(
-    selected_job,
-    "generated_date",
+generated_date = selected_job.get(
     "created_at",
-    "date",
-    default="Not available"
+    "Not available"
 )
 
-form_url = get_value(
-    selected_job,
+if generated_date != "Not available" and generated_date:
+
+    generated_date = str(generated_date).split("T")[0]
+
+
+form_url = selected_job.get(
     "form_url",
-    "application_form_url",
-    "application_link",
-    default=""
+    ""
 )
 
 with st.container(border=True):
@@ -457,7 +376,7 @@ with st.container(border=True):
 
     st.divider()
 
-    st.markdown("**Generated Date**")
+    st.markdown("**Date**")
 
     st.write(str(generated_date))
 
@@ -467,7 +386,7 @@ with st.container(border=True):
 
 
 # =========================================================
-# 10. APPLICATION FORM
+# 8. APPLICATION FORM
 # =========================================================
 
 st.divider()
@@ -502,7 +421,7 @@ else:
 
 
 # =========================================================
-# 11. AI CANDIDATE EVALUATION
+# 9. AI CANDIDATE EVALUATION
 # =========================================================
 
 st.markdown(
@@ -518,7 +437,7 @@ st.write(
 
 
 # =========================================================
-# 12. CANDIDATE APPLICATIONS
+# 10. CANDIDATE APPLICATIONS
 # =========================================================
 
 st.markdown(
@@ -526,16 +445,46 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-applications_response = get_applications(selected_post_id)
+applications_response = None
+
+try:
+
+    response = requests.get(
+        f"{API_URL}/api/ats/jobs/{selected_post_id}/applications",
+        timeout=REQUEST_TIMEOUT
+    )
+
+    response.raise_for_status()
+    applications_response = response.json()
+
+except requests.exceptions.RequestException as error:
+
+    st.error(f"Unable to fetch candidate applications: {error}")
+
+except ValueError:
+
+    st.error("Applications API returned an invalid JSON response.")
+
 
 if applications_response is not None:
 
-    applications = extract_list(
-        applications_response,
-        "applications",
-        "candidates",
-        "data"
-    )
+    applications = []
+
+    if isinstance(applications_response, list):
+
+        applications = applications_response
+
+    elif isinstance(applications_response, dict):
+
+        for key in ["applications", "candidates", "data"]:
+
+            value = applications_response.get(key)
+
+            if isinstance(value, list):
+
+                applications = value
+                break
+
 
     st.metric(
         "Applications for Selected Job",
@@ -554,21 +503,11 @@ if applications_response is not None:
         for application in applications:
 
             candidate_name = str(
-                get_value(
-                    application,
-                    "full_name",
-                    "candidate_name",
-                    "name",
-                    default=""
-                )
+                application.get("full_name", "")
             )
 
             email = str(
-                get_value(
-                    application,
-                    "email",
-                    default=""
-                )
+                application.get("email", "")
             )
 
             if (
@@ -585,45 +524,48 @@ if applications_response is not None:
 
             for application in filtered_applications:
 
+                candidate_score = application.get("candidate_score")
+
+                if candidate_score is None:
+
+                    formatted_score = "N/A"
+
+                else:
+
+                    try:
+
+                        formatted_score = (
+                            f"{float(candidate_score):.2f}%"
+                        )
+
+                    except (ValueError, TypeError):
+
+                        formatted_score = str(candidate_score)
+
+
                 table_data.append({
 
-                    "Candidate Name": get_value(
-                        application,
+                    "Candidate Name": application.get(
                         "full_name",
-                        "candidate_name",
-                        "name",
-                        default="N/A"
+                        "N/A"
                     ),
 
-                    "Phone": get_value(
-                        application,
+                    "Phone": application.get(
                         "phone",
-                        default="N/A"
+                        "N/A"
                     ),
 
-                    "Email": get_value(
-                        application,
+                    "Email": application.get(
                         "email",
-                        default="N/A"
+                        "N/A"
                     ),
 
-                    "Resume": get_value(
-                        application,
+                    "Resume": application.get(
                         "resume_filename",
-                        "resume_name",
-                        default="Not available"
+                        "Not available"
                     ),
 
-                    "AI Match Score": format_score(
-                        get_value(
-                            application,
-                            "ai_score",
-                            "match_score",
-                            "evaluation_score",
-                            "score",
-                            default=None
-                        )
-                    )
+                    "AI Match Score": formatted_score
 
                 })
 
@@ -631,21 +573,24 @@ if applications_response is not None:
             applications_df = pd.DataFrame(table_data)
 
             st.dataframe(
-                applications_df,
+                applications_df.style.map(
+                    lambda score: (
+                        "color: green; font-weight: bold"
+                        if isinstance(score, str)
+                        and score.endswith("%")
+                        else ""
+                    ),
+                    subset=["AI Match Score"]
+                ),
                 use_container_width=True,
-                hide_index=True,
-                column_order=[
-                    "Candidate Name",
-                    "Phone",
-                    "Email",
-                    "Resume",
-                    "AI Match Score"
-                ]
+                hide_index=True
             )
+
 
         else:
 
             st.info("No candidates match your search.")
+
 
     else:
 
@@ -655,7 +600,7 @@ if applications_response is not None:
 
 
 # =========================================================
-# 13. FOOTER
+# 11. FOOTER
 # =========================================================
 
 st.markdown(
