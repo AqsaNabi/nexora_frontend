@@ -10,12 +10,6 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
  
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-
-    st.set_page_config(
-    page_title="Job Post",
-    page_icon="💼",
-    layout="wide"
-)
  
  
 from backend.repository.job_post_functions import (
@@ -140,8 +134,8 @@ def apply_styling():
  
         div[data-testid="stChatInput"] {
                 color: white !important;
-    -webkit-text-fill-color: white !important;
-    caret-color: white !important;
+               -webkit-text-fill-color: white !important;
+               caret-color: white !important;
         }
  
         hr {
@@ -402,7 +396,7 @@ def job_post_generator():
     apply_styling()
     display_sidebar()
  
-    st.title("Recruitment HRM")
+    st.title("Nexora HR Job Post Generator")
     st.caption("AI-powered job post and application form generator")
     st.divider()
  
