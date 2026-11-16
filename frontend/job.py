@@ -1,32 +1,24 @@
-
-import json
-import uuid
 import os
 import sys
 
 import streamlit as st
-import websocket
 
-from api import api_request
 
-PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))
-)
+# The frontend file is in the project root, so use this directory
+# as the import root for the existing repository package.
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from backend.authen.auth import create_token
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
-BACKEND_URL = "http://127.0.0.1:8000"
-WEBSOCKET_URL = "ws://127.0.0.1:8000/ws/chat"
-
-REQUEST_TIMEOUT = 600
+from backend.repository.job_post_functions import (
+    initialize_session_state,
+    send_message,
+    process_pending_message,
+    approve_both_drafts,
+    start_new_job_post
+)
 
 
 # ============================================================
@@ -34,13 +26,12 @@ REQUEST_TIMEOUT = 600
 # ============================================================
 
 def apply_styling():
-
     st.markdown(
         """
         <style>
-
         .stApp {
-            background-color: #f4f7fb;
+            background-color: #F7F5FF;
+            color: #26334A;
         }
 
         .block-container {
@@ -49,16 +40,50 @@ def apply_styling():
             padding-bottom: 3rem;
         }
 
-        h1, h2, h3 {
+        h1, h2, h3, h4 {
             color: #183B66 !important;
             font-weight: 750 !important;
         }
 
-        hr {
-            border-color: #dce5f0 !important;
+        .stMarkdown p,
+        .stMarkdown li,
+        .stMarkdown span,
+        .stMarkdown label {
+            color: #26334A !important;
         }
 
-        /* LEFT SIDEBAR */
+        [data-testid="stChatMessage"] {
+            background-color: #FFFFFF;
+            border: 1px solid #E5DDF8;
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .stTextInput input,
+        .stTextArea textarea {
+            background-color: #FFFFFF !important;
+            color: #26334A !important;
+            border: 1px solid #CFC3EF !important;
+            border-radius: 10px !important;
+        }
+
+        .stTextInput input::placeholder,
+        .stTextArea textarea::placeholder {
+            color: #7B8497 !important;
+        }
+
+        div.stButton > button {
+            min-height: 44px;
+            border-radius: 10px;
+            font-weight: 600;
+            border: 1px solid #DCE4EF;
+        }
+
+        div.stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, #526FE8, #7656CE) !important;
+            border: 1px solid #526FE8 !important;
+            color: white !important;
+        }
 
         [data-testid="stSidebar"] {
             background: linear-gradient(
@@ -67,8 +92,7 @@ def apply_styling():
                 #203F68 55%,
                 #352D68 100%
             ) !important;
-
-            border-right: 1px solid #304f78 !important;
+            border-right: 1px solid #304F78 !important;
         }
 
         [data-testid="stSidebar"] h1,
@@ -82,7 +106,7 @@ def apply_styling():
         }
 
         [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
-            color: #c6d5eb !important;
+            color: #C6D5EB !important;
         }
 
         [data-testid="stSidebar"] hr {
@@ -91,98 +115,34 @@ def apply_styling():
 
         [data-testid="stSidebar"] div.stButton > button {
             width: 100%;
-            min-height: 44px;
-
-            background: linear-gradient(
-                135deg,
-                #526FE8,
-                #7656CE
-            ) !important;
-
+            background: linear-gradient(135deg, #526FE8, #7656CE) !important;
             color: white !important;
             border: 1px solid rgba(255,255,255,0.18) !important;
             border-radius: 11px !important;
-            font-weight: 650 !important;
         }
 
-        [data-testid="stSidebar"] div.stButton > button:hover {
-            background: linear-gradient(
-                135deg,
-                #718AFF,
-                #9575E8
-            ) !important;
-
-            border-color: white !important;
-        }
-
-        /* MAIN BUTTONS */
-
-        div.stButton > button {
-            min-height: 44px;
-            border-radius: 10px;
-            font-weight: 600;
-            border: 1px solid #dce4ef;
-        }
-
-        div.stButton > button[kind="primary"] {
-            background: linear-gradient(
-                135deg,
-                #526FE8,
-                #7656CE
-            ) !important;
-
-            border: 1px solid #526FE8 !important;
-            color: white !important;
-        }
-
-        div.stButton > button[kind="primary"]:hover {
-            background: linear-gradient(
-                135deg,
-                #718AFF,
-                #9575E8
-            ) !important;
-
-            color: white !important;
-        }
-
-        /* INPUTS */
-
-        div[data-testid="stTextArea"] textarea {
+        [data-testid="stExpander"] {
+            background-color: #FFFFFF;
+            border: 1px solid #E5DDF8;
             border-radius: 12px;
-            border: 1px solid #dce4ef;
-            background-color: white;
-            line-height: 1.6;
         }
 
-        /* WELCOME SECTION */
-
-        .welcome-container {
-            text-align: center;
-            padding: 35px 25px;
-            max-width: 850px;
-            margin: 0 auto;
+        [data-testid="stCode"] {
+            background-color: #F0ECFA !important;
+            border-radius: 10px;
         }
 
-        .welcome-heading {
-            color: #526FE8;
-            font-size: 19px;
-            font-weight: 600;
-            margin-bottom: 14px;
+        div[data-testid="stChatInput"] {
+            border-radius: 12px;
         }
 
-        .welcome-subheading {
-            color: #183B66;
-            font-size: 30px;
-            font-weight: 750;
-            margin-bottom: 15px;
+        hr {
+            border-color: #E2DCF0 !important;
         }
 
-        .welcome-description {
-            color: #64748B;
-            font-size: 16px;
-            line-height: 1.8;
+        .stCaption {
+            color: #64748B !important;
         }
-
         </style>
         """,
         unsafe_allow_html=True
@@ -190,447 +150,13 @@ def apply_styling():
 
 
 # ============================================================
-# SESSION STATE
-# ============================================================
-
-def initialize_session_state():
-
-    defaults = {
-        "session_id": str(uuid.uuid4()),
-        "chat_messages": [],
-        "current_job_post": {},
-        "current_application_form": {},
-        "approved_payload": None,
-        "approved_json_path": None,
-        "is_approved": False,
-        "json_editor_text": "",
-        "json_editor_needs_sync": True,
-        "page": "job_post_generator",
-        "pending_message": None
-    }
-
-    for key, value in defaults.items():
-
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-
-# ============================================================
-# JSON EDITOR
-# ============================================================
-
-def get_combined_json():
-
-    return {
-        "job_post": st.session_state.current_job_post,
-        "application_form": st.session_state.current_application_form
-    }
-
-
-def sync_json_editor():
-
-    if st.session_state.json_editor_needs_sync:
-
-        st.session_state.json_editor_text = json.dumps(
-            get_combined_json(),
-            indent=4,
-            ensure_ascii=False
-        )
-
-        st.session_state.json_editor_needs_sync = False
-
-
-def apply_json_editor_changes():
-
-    try:
-
-        edited_data = json.loads(
-            st.session_state.json_editor_text
-        )
-
-        if not isinstance(edited_data, dict):
-            raise ValueError("The JSON root must be an object.")
-
-        job_post = edited_data.get("job_post")
-        application_form = edited_data.get("application_form")
-
-        if not isinstance(job_post, dict):
-            raise ValueError("'job_post' must be a JSON object.")
-
-        if not isinstance(application_form, dict):
-            raise ValueError(
-                "'application_form' must be a JSON object."
-            )
-
-        st.session_state.current_job_post = job_post
-        st.session_state.current_application_form = application_form
-
-        return True
-
-    except (json.JSONDecodeError, ValueError) as error:
-
-        st.error(f"Invalid JSON: {error}")
-        return False
-
-
-# ============================================================
-# WEBSOCKET COMMUNICATION
-# ============================================================
-
-def send_websocket_event(event):
-
-    ws = None
-
-    try:
-
-        # Get the existing JWT token from main Nexora login.
-        token = st.session_state.get("token")
-
-        # Remove unwanted spaces and newline characters.
-        if token:
-            token = str(token).strip()
-
-        if not token:
-
-            st.error(
-                "Authentication token not found. Please log in."
-            )
-
-            return None
-
-        # Get the current conversation session ID.
-        session_id = st.session_state.session_id
-
-        # The current backend expects the token in query parameters.
-        ws_url = (
-            f"{WEBSOCKET_URL}/{session_id}"
-            f"?token={token}"
-        )
-
-        # Establish authenticated WebSocket connection.
-        ws = websocket.create_connection(
-            ws_url,
-            timeout=REQUEST_TIMEOUT
-        )
-
-        connection_message = json.loads(ws.recv())
-
-        if connection_message.get("type") == "error":
-
-            raise Exception(
-                connection_message.get(
-                    "message",
-                    "WebSocket connection failed."
-                )
-            )
-
-        # Send event to backend.
-        ws.send(json.dumps(event))
-
-        # Receive backend response.
-        response = json.loads(ws.recv())
-
-        return response
-
-    except websocket.WebSocketTimeoutException:
-
-        st.error("The AI response timed out. Please try again.")
-        return None
-
-    except websocket.WebSocketException as error:
-
-        st.error(f"WebSocket connection error: {error}")
-        return None
-
-    except json.JSONDecodeError:
-
-        st.error("The backend returned an invalid response.")
-        return None
-
-    except Exception as error:
-
-        st.error(f"Something went wrong: {error}")
-        return None
-
-    finally:
-
-        if ws is not None:
-
-            try:
-                ws.close()
-            except Exception:
-                pass
-
-
-# ============================================================
-# RESPONSE HANDLING
-# ============================================================
-
-def update_drafts_from_response(response):
-
-    data = response.get("data", response)
-
-    if not isinstance(data, dict):
-        return
-
-    job_post = data.get("job_post")
-    application_form = data.get("application_form")
-
-    if isinstance(job_post, dict):
-        st.session_state.current_job_post = job_post
-
-    if isinstance(application_form, dict):
-        st.session_state.current_application_form = application_form
-
-    if (
-        isinstance(job_post, dict)
-        and isinstance(application_form, dict)
-    ):
-
-        st.session_state.json_editor_needs_sync = True
-        st.session_state.is_approved = False
-        st.session_state.approved_payload = None
-        st.session_state.approved_json_path = None
-
-
-# ============================================================
-# SEND MESSAGE
-# ============================================================
-
-def send_message(message):
-
-    message = message.strip()
-
-    if not message:
-        return
-
-    st.session_state.chat_messages.append({
-        "role": "user",
-        "content": message
-    })
-
-    st.session_state.pending_message = message
-
-    st.rerun()
-
-
-# ============================================================
-# PROCESS PENDING MESSAGE
-# ============================================================
-
-def process_pending_message(processing_placeholder):
-
-    message = st.session_state.pending_message
-
-    if not message:
-        return
-
-    # Clear pending state before processing.
-    st.session_state.pending_message = None
-
-    with processing_placeholder.container():
-
-        with st.chat_message("assistant"):
-
-            with st.spinner("Processing your request..."):
-
-                response = send_websocket_event({
-                    "type": "message",
-                    "message": message
-                })
-
-    if not response:
-
-        st.session_state.chat_messages.append({
-            "role": "assistant",
-            "content": (
-                "I couldn't process your request. "
-                "Please try again."
-            )
-        })
-
-        st.rerun()
-
-    if response.get("type") == "error":
-
-        st.session_state.chat_messages.append({
-            "role": "assistant",
-            "content": response.get(
-                "message",
-                "I couldn't process that request."
-            )
-        })
-
-        st.rerun()
-
-    if response.get("type") != "response":
-
-        st.session_state.chat_messages.append({
-            "role": "assistant",
-            "content": response.get(
-                "message",
-                "Unexpected response from the backend."
-            )
-        })
-
-        st.rerun()
-
-    data = response.get("data", {})
-
-    if not isinstance(data, dict):
-        data = {}
-
-    action = data.get("action")
-
-    if action == "answer":
-
-        # IMPORTANT:
-        # A normal answer must NOT clear the previously
-        # generated job post or application form.
-
-        assistant_message = (
-            data.get("answer")
-            or "I don't know the answer to that."
-        )
-
-    elif action == "draft":
-
-        # Only update saved drafts when the backend
-        # actually returns a new or modified draft.
-
-        update_drafts_from_response(response)
-
-        assistant_message = (
-            data.get("message")
-            or (
-                "Your job description and application "
-                "form have been generated."
-            )
-        )
-
-    else:
-
-        update_drafts_from_response(response)
-
-        assistant_message = (
-            data.get("message")
-            or "Your request has been processed."
-        )
-
-    st.session_state.chat_messages.append({
-        "role": "assistant",
-        "content": assistant_message
-    })
-
-    st.rerun()
-
-
-# ============================================================
-# APPROVE BOTH DRAFTS
-# ============================================================
-
-def approve_both_drafts():
-
-    if not apply_json_editor_changes():
-        return
-
-    if not st.session_state.current_job_post:
-
-        st.warning("There is no job description to approve.")
-        return
-
-    if not st.session_state.current_application_form:
-
-        st.warning("There is no application form to approve.")
-        return
-
-    with st.spinner("Approving and saving the final JSON..."):
-
-        response = send_websocket_event({
-            "type": "approve",
-            "job_post": st.session_state.current_job_post,
-            "application_form": (
-                st.session_state.current_application_form
-            )
-        })
-
-    if not response:
-        return
-
-    if response.get("type") == "error":
-
-        st.error(
-            response.get(
-                "message",
-                "Approval failed."
-            )
-        )
-        return
-
-    if response.get("type") in ["approval", "approved"]:
-
-        st.session_state.is_approved = True
-
-        st.session_state.approved_payload = (
-            response.get("approved_payload")
-            or response.get("data")
-        )
-
-        st.session_state.approved_json_path = (
-            response.get("saved_file")
-        )
-
-        st.rerun()
-
-    st.error(
-        response.get(
-            "message",
-            "The backend did not confirm approval."
-        )
-    )
-
-
-# ============================================================
-# START NEW JOB POST
-# ============================================================
-
-def start_new_job_post():
-
-    st.session_state.session_id = str(uuid.uuid4())
-
-    st.session_state.chat_messages = []
-
-    st.session_state.current_job_post = {}
-
-    st.session_state.current_application_form = {}
-
-    st.session_state.approved_payload = None
-
-    st.session_state.approved_json_path = None
-
-    st.session_state.is_approved = False
-
-    st.session_state.json_editor_text = ""
-
-    st.session_state.json_editor_needs_sync = True
-
-    st.session_state.pending_message = None
-
-    st.rerun()
-
-
-# ============================================================
-# LEFT SIDEBAR
+# SIDEBAR
 # ============================================================
 
 def display_sidebar():
-
     with st.sidebar:
-
         st.markdown("## HELLO HR!")
-
         st.caption("HR Department")
-
         st.divider()
 
         if st.button(
@@ -638,12 +164,10 @@ def display_sidebar():
             key="back_to_dashboard",
             use_container_width=True
         ):
-
             st.session_state.page = "dashboard"
             st.rerun()
 
         st.divider()
-
         st.markdown("### Form Link Generator")
 
         if st.button(
@@ -651,7 +175,6 @@ def display_sidebar():
             key="sidebar_new_job",
             use_container_width=True
         ):
-
             start_new_job_post()
 
 
@@ -660,21 +183,14 @@ def display_sidebar():
 # ============================================================
 
 def display_chat_messages():
-
     for message in st.session_state.chat_messages:
-
         role = message.get("role", "assistant")
-
         content = message.get("content", "")
 
-        if role not in ["user", "assistant"]:
-            continue
-
-        if not content:
+        if role not in ["user", "assistant"] or not content:
             continue
 
         with st.chat_message(role):
-
             st.markdown(content)
 
 
@@ -683,32 +199,20 @@ def display_chat_messages():
 # ============================================================
 
 def display_welcome_section():
-
     if st.session_state.chat_messages:
         return
 
-    left_space, center_content, right_space = st.columns(
-        [1, 5, 1]
-    )
+    _, center_content, _ = st.columns([1, 5, 1])
 
     with center_content:
-
-        st.markdown(
-            "<h3 style='text-align:center; color:#526FE8;'>"
-            "Let's Get Started!"
-            "</h3>",
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            "<h2 style='text-align:center; color:#183B66;'>"
-            "Your hiring journey starts here."
-            "</h2>",
-            unsafe_allow_html=True
-        )
-
         st.markdown(
             """
+            <h3 style='text-align:center; color:#526FE8;'>
+                Let's Get Started!
+            </h3>
+            <h2 style='text-align:center; color:#183B66;'>
+                Your hiring journey starts here.
+            </h2>
             <p style="
                 text-align:center;
                 color:#64748B;
@@ -725,269 +229,195 @@ def display_welcome_section():
 
 
 # ============================================================
-# JOB DESCRIPTION AND APPLICATION FORM PREVIEW
+# JOB POST PREVIEW
 # ============================================================
 
-def display_complete_preview():
-
+def display_job_post():
     job_post = st.session_state.current_job_post
 
-    application_form = (
-        st.session_state.current_application_form
-    )
-
-    if not job_post or not application_form:
+    if not job_post:
         return
 
-    # --------------------------------------------------
-    # 1. JOB DESCRIPTION
-    # --------------------------------------------------
+    st.subheader("Job Description")
 
-    st.subheader("1. Job Description")
+    if job_post.get("job_title"):
+        st.markdown(f"### {job_post['job_title']}")
 
-    job_description = job_post.get(
-        "job_description",
-        ""
-    )
+    fields = [
+        ("Department", "department"),
+        ("Location", "location"),
+        ("Work Mode", "work_mode"),
+        ("Employment Type", "employment_type"),
+        ("Experience", "experience"),
+        ("Salary Range", "salary_range"),
+        ("Role Summary", "role_summary"),
+        ("Job Description", "job_description"),
+        ("Responsibilities", "responsibilities"),
+        ("Required Skills", "required_skills"),
+        ("Preferred Skills", "preferred_skills"),
+        ("Education", "education"),
+        ("Benefits", "benefits"),
+        ("Application Instructions", "application_instructions")
+    ]
 
-    if job_description:
+    for label, key in fields:
+        value = job_post.get(key)
 
-        st.markdown(job_description)
+        if not value:
+            continue
 
-    else:
+        st.markdown(f"**{label}**")
 
-        st.caption("Job description has not been provided.")
+        if isinstance(value, list):
+            for item in value:
+                st.markdown(f"- {item}")
+        else:
+            st.write(value)
 
-    st.divider()
 
-    # --------------------------------------------------
-    # 2. APPLICATION FORM
-    # --------------------------------------------------
+# ============================================================
+# APPLICATION FORM PREVIEW
+# ============================================================
 
-    st.subheader("2. Application Form")
+def display_application_form():
+    application_form = st.session_state.current_application_form
+
+    if not application_form:
+        return
+
+    st.subheader("Application Form")
 
     form_title = application_form.get("form_title")
 
     if form_title:
-
-        st.markdown(f"**{form_title}**")
+        st.markdown(f"### {form_title}")
 
     questions = application_form.get("questions", [])
 
-    if isinstance(questions, list):
+    if not isinstance(questions, list):
+        st.warning("The generated application questions are invalid.")
+        return
 
-        for index, question in enumerate(
-            questions,
-            start=1
-        ):
+    for index, question in enumerate(questions, start=1):
+        if not isinstance(question, dict):
+            continue
 
-            with st.container(border=True):
+        with st.container(border=True):
+            question_text = question.get(
+                "question",
+                question.get("field_name", "")
+            )
 
-                st.markdown(f"**Question {index}**")
+            st.markdown(f"**{index}. {question_text}**")
 
-                if isinstance(question, dict):
+            field_type = question.get("type", "text")
+            st.caption(
+                f"Answer type: {field_type.replace('_', ' ').title()}"
+            )
 
-                    st.write(
-                        question.get(
-                            "question",
-                            question.get("field_name", "")
-                        )
-                    )
+            if question.get("required"):
+                st.caption("Required")
 
-                    st.caption(
-                        f"Field: {question.get('field_name', '')}"
-                    )
+            options = question.get("options", [])
 
-                    st.caption(
-                        f"Type: {question.get('type', '')}"
-                    )
-
-                    st.caption(
-                        "Required: "
-                        f"{question.get('required', False)}"
-                    )
-
-                    options = question.get("options", [])
-
-                    if options:
-                        st.caption(f"Options: {options}")
-
-                else:
-
-                    st.write(question)
-
-    else:
-
-        st.json(application_form)
+            if options:
+                st.caption("Options: " + ", ".join(map(str, options)))
 
 
 # ============================================================
-# COMBINED JSON EDITOR
-# ============================================================
-
-def display_json_editor():
-
-    st.caption(
-        "Review or edit the complete JSON containing "
-        "both the job post and application form."
-    )
-
-    sync_json_editor()
-
-    st.text_area(
-        "Combined JSON",
-        key="json_editor_text",
-        height=450,
-        disabled=st.session_state.is_approved
-    )
-
-
-# ============================================================
-# REVIEW SECTION
+# REVIEW AND APPROVAL
 # ============================================================
 
 def display_review_section():
-
     job_post = st.session_state.current_job_post
+    application_form = st.session_state.current_application_form
 
-    application_form = (
-        st.session_state.current_application_form
-    )
-
-    # Do not display dropdowns before the first generation.
     if not job_post or not application_form:
         return
 
     st.divider()
+    st.header("Review Your Recruitment Content")
 
-    st.subheader("Generated Job Post & Application Form")
+    with st.expander("Job Description", expanded=True):
+        display_job_post()
 
-    # --------------------------------------------------
-    # DROPDOWN 1: COMPLETE PREVIEW
-    # --------------------------------------------------
-
-    with st.expander(
-        "📄 Complete Preview - Job Description & Application Form",
-        expanded=False
-    ):
-
-        display_complete_preview()
-
-    # --------------------------------------------------
-    # DROPDOWN 2: COMBINED JSON OUTPUT
-    # --------------------------------------------------
-
-    with st.expander(
-        "📋 Combined JSON Output",
-        expanded=False
-    ):
-
-        display_json_editor()
-
-    # --------------------------------------------------
-    # APPROVAL STATUS
-    # --------------------------------------------------
-
-    if st.session_state.is_approved:
-
-        st.success(
-            "Your job description and application form "
-            "have been approved successfully!"
-        )
-
-        st.info(
-            "The approved JSON has been saved to storage."
-        )
-
-        return
-
-    # --------------------------------------------------
-    # FINAL APPROVAL
-    # --------------------------------------------------
+    with st.expander("Application Form", expanded=True):
+        display_application_form()
 
     st.divider()
 
+    if st.session_state.is_approved:
+        st.success(
+            "The job post and application form have been approved successfully."
+        )
+
+        if st.session_state.recruitment_post_id:
+            st.write(
+                "Recruitment Post ID: "
+                f"{st.session_state.recruitment_post_id}"
+            )
+
+        if st.session_state.google_form_url:
+            st.subheader("Candidate Application Link")
+            st.markdown(
+                f"[Open Google Application Form]"
+                f"({st.session_state.google_form_url})"
+            )
+            st.code(st.session_state.google_form_url, language=None)
+        else:
+            st.warning(
+                "Approval was confirmed, but the backend did not return a Google Form URL."
+            )
+
+        return
+
     st.subheader("Final Approval")
+    st.write(
+        "Review both sections above. Once everything is correct, "
+        "approve them to create the recruitment post and candidate application form."
+    )
 
     if st.button(
-        "Approve Job Description & Application Form",
+        "Approve Job Post & Application Form",
         type="primary",
         use_container_width=True
     ):
-
         approve_both_drafts()
 
 
 # ============================================================
-# MAIN PAGE - RIGHT SIDE
+# MAIN CHATBOT PAGE
 # ============================================================
 
 def job_post_generator():
-
     initialize_session_state()
-
-    # Temporary token for independent testing
-    if not st.session_state.get("token"):
-        st.session_state.token = create_token("test@example.com")
-
     apply_styling()
-
-    # LEFT SIDEBAR
     display_sidebar()
 
-    # MAIN DASHBOARD NAVIGATION
-    if st.session_state.page == "dashboard":
-
-        st.info(
-            "You selected Back to Main Dashboard. "
-            "The parent dashboard must handle this navigation."
-        )
-
-        return
-
-    # RIGHT MAIN CONTENT
-    st.title(
-        "💼📑 Job Post – Application Link Generator"
-    )
-
-    st.caption(
-        "Generate, review and approve job "
-        "descriptions and application forms."
-    )
-
+    st.title("Nexora HR Job Post Generator")
+    st.caption("AI-powered job post and application form generator")
     st.divider()
 
-    # CONVERSATION ANCHOR
-    st.markdown(
-        '<div id="chat-conversation-anchor"></div>',
-        unsafe_allow_html=True
-    )
+    process_pending_message()
 
-    # WELCOME CONTENT
     display_welcome_section()
-
-    # PREVIOUS CONVERSATIONS
     display_chat_messages()
-
-    # PROCESSING PLACEHOLDER
-    processing_placeholder = st.empty()
-
-    # PROCESS PENDING MESSAGE
-    process_pending_message(processing_placeholder)
-
-    # GENERATED DRAFTS AND APPROVAL
     display_review_section()
 
-    # CHAT INPUT
     if not st.session_state.is_approved:
-
         user_message = st.chat_input(
-            "Describe the job role and enter HR requirements..."
+            "Describe the job position you want to create..."
         )
 
         if user_message:
-
             send_message(user_message)
+
+    elif st.session_state.google_form_url:
+        st.markdown("### Google Application Form")
+        st.link_button(
+            "Open Google Form",
+            st.session_state.google_form_url
+        )
 
 
 if __name__ == "__main__":
