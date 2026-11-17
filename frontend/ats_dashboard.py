@@ -1,13 +1,24 @@
-#render_ats_dashboard().
 
 import streamlit as st
 import pandas as pd
+import html
 
 from dashboard_functions import (
     fetch_dashboard_data,
     fetch_applications
 )
 
+
+# =========================================================
+# BACKEND CONFIGURATION
+# =========================================================
+
+API_URL = "http://127.0.0.1:8001"
+
+
+# =========================================================
+# MAIN ATS DASHBOARD
+# =========================================================
 
 def render_ats_dashboard():
 
@@ -123,18 +134,22 @@ def render_ats_dashboard():
     dashboard_data, dashboard_error = fetch_dashboard_data()
 
     if dashboard_error:
+
         st.error(
             f"Unable to fetch dashboard data: {dashboard_error}"
         )
+
         st.warning(
             "Please make sure the backend server is running "
             "and try refreshing the page."
         )
+
         return
 
     jobs = []
 
     if isinstance(dashboard_data, list):
+
         jobs = dashboard_data
 
     elif isinstance(dashboard_data, dict):
@@ -145,13 +160,16 @@ def render_ats_dashboard():
             "recruitment_posts",
             "data"
         ]:
+
             value = dashboard_data.get(key)
 
             if isinstance(value, list):
+
                 jobs = value
                 break
 
     if not jobs:
+
         st.info("No job postings are currently available.")
 
     # =====================================================
@@ -159,7 +177,7 @@ def render_ats_dashboard():
     # =====================================================
 
     st.markdown(
-        '<div class="section-heading">Dashboard Overview</div>',
+        '<div class="section-heading">Overview</div>',
         unsafe_allow_html=True
     )
 
@@ -180,6 +198,7 @@ def render_ats_dashboard():
                 job_applications = []
 
                 if isinstance(applications_response, list):
+
                     job_applications = applications_response
 
                 elif isinstance(applications_response, dict):
@@ -189,9 +208,11 @@ def render_ats_dashboard():
                         "candidates",
                         "data"
                     ]:
+
                         value = applications_response.get(key)
 
                         if isinstance(value, list):
+
                             job_applications = value
                             break
 
@@ -220,6 +241,7 @@ def render_ats_dashboard():
 
         post_id = job.get("post_id")
         job_title = job.get("job_title")
+
         generated_date = job.get(
             "job_posted_date",
             "Not available"
@@ -228,15 +250,21 @@ def render_ats_dashboard():
         if post_id is not None:
 
             if job_title and str(job_title).strip():
+
                 job_title = str(job_title).strip()
+
             else:
+
                 job_title = (
                     f"Job title missing for Post ID: {post_id}"
                 )
 
             if generated_date and generated_date != "Not available":
+
                 generated_date = str(generated_date).split("T")[0]
+
             else:
+
                 generated_date = "Date not available"
 
             dropdown_label = (
@@ -244,6 +272,7 @@ def render_ats_dashboard():
             )
 
             if dropdown_label in job_options:
+
                 dropdown_label = (
                     f"{dropdown_label} ({index + 1})"
                 )
@@ -265,6 +294,7 @@ def render_ats_dashboard():
         for job in jobs:
 
             if str(job.get("post_id")) == str(selected_post_id):
+
                 selected_job = job
                 break
 
@@ -288,6 +318,7 @@ def render_ats_dashboard():
     job_title = selected_job.get("job_title")
 
     if not job_title or not str(job_title).strip():
+
         job_title = "Job title not available"
 
     job_description = selected_job.get(
@@ -301,6 +332,7 @@ def render_ats_dashboard():
     )
 
     if generated_date != "Not available" and generated_date:
+
         generated_date = str(generated_date).split("T")[0]
 
     form_url = selected_job.get("form_url", "")
@@ -308,13 +340,17 @@ def render_ats_dashboard():
     with st.container(border=True):
 
         st.markdown("**Job Post**")
+
         st.subheader(str(job_title))
+
         st.divider()
 
         st.markdown("**Date**")
+
         st.write(str(generated_date))
 
         st.markdown("**Job Description**")
+
         st.write(str(job_description))
 
     # =====================================================
@@ -334,7 +370,7 @@ def render_ats_dashboard():
 
             st.markdown(
                 f"""
-                <a href="{form_url}"
+                <a href="{html.escape(form_url, quote=True)}"
                    target="_blank"
                    class="application-form-btn">
                     Open Google Form ↗
@@ -344,11 +380,13 @@ def render_ats_dashboard():
             )
 
         else:
+
             st.caption(
                 "Application form link is not a valid URL."
             )
 
     else:
+
         st.caption(
             "Application form link is not available."
         )
@@ -386,6 +424,7 @@ def render_ats_dashboard():
         )
 
         if applications_error:
+
             st.error(
                 "Unable to fetch candidate applications: "
                 f"{applications_error}"
@@ -402,6 +441,7 @@ def render_ats_dashboard():
         applications = []
 
         if isinstance(applications_response, list):
+
             applications = applications_response
 
         elif isinstance(applications_response, dict):
@@ -411,6 +451,7 @@ def render_ats_dashboard():
                 value = applications_response.get(key)
 
                 if isinstance(value, list):
+
                     applications = value
                     break
 
@@ -442,6 +483,7 @@ def render_ats_dashboard():
                     search_query.lower() in candidate_name.lower()
                     or search_query.lower() in email.lower()
                 ):
+
                     filtered_applications.append(application)
 
             if filtered_applications:
@@ -455,54 +497,146 @@ def render_ats_dashboard():
                     )
 
                     if candidate_score is None:
+
                         formatted_score = "N/A"
 
                     else:
 
                         try:
+
                             formatted_score = (
                                 f"{float(candidate_score):.2f}%"
                             )
+
                         except (ValueError, TypeError):
+
                             formatted_score = str(candidate_score)
 
+                    # Check whether the candidate uploaded a resume
+                    resume_uploaded = bool(
+                        application.get("has_resume", False)
+                    )
+
+                    # Create the resume URL
+                    resume_url = None
+
+                    if resume_uploaded:
+
+                        application_id = application.get("application_id")
+
+                        if application_id is not None:
+
+                            resume_url = (
+                                f"{API_URL}/api/ats/applications/"
+                                f"{application_id}/resume"
+                            )
+
                     table_data.append({
+
                         "Candidate Name": application.get(
                             "full_name", "N/A"
                         ),
+
                         "Phone": application.get(
                             "phone", "N/A"
                         ),
+
                         "Email": application.get(
                             "email", "N/A"
                         ),
-                        "Resume": application.get(
-                            "resume_filename",
-                            "Not available"
-                        ),
+
+                        "Resume": resume_url,
+
                         "AI Match Score": formatted_score
+
                     })
 
-                applications_df = pd.DataFrame(table_data)
+                # Build table with clickable resume links
+                table_html = """
+                <table style="
+                    width:100%;
+                    border-collapse:collapse;
+                    background:white;
+                ">
+                <thead>
+                    <tr>
+                        <th style="padding:12px;text-align:left;">Candidate Name</th>
+                        <th style="padding:12px;text-align:left;">Phone</th>
+                        <th style="padding:12px;text-align:left;">Email</th>
+                        <th style="padding:12px;text-align:left;">Resume</th>
+                        <th style="padding:12px;text-align:left;">AI Match Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                """
 
-                st.dataframe(
-                    applications_df.style.map(
-                        lambda score: (
-                            "color: green; font-weight: bold"
-                            if isinstance(score, str)
-                            and score.endswith("%")
-                            else ""
-                        ),
-                        subset=["AI Match Score"]
-                    ),
-                    use_container_width=True,
-                    hide_index=True
+                for row in table_data:
+
+                    resume_url = row["Resume"]
+
+                    if resume_url:
+
+                        resume_cell = (
+                            f'<a href="{html.escape(resume_url, quote=True)}" '
+                            f'target="_blank" rel="noopener noreferrer">'
+                            f'View PDF</a>'
+                        )
+
+                    else:
+
+                        resume_cell = "None"
+
+                    score_style = (
+                        "color:green;font-weight:bold;"
+                        if str(row["AI Match Score"]).endswith("%")
+                        else ""
+                    )
+
+                    table_html += "<tr>"
+
+                    table_html += (
+                        '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                        f'{html.escape(str(row["Candidate Name"]))}</td>'
+                    )
+
+                    table_html += (
+                        '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                        f'{html.escape(str(row["Phone"]))}</td>'
+                    )
+
+                    table_html += (
+                        '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                        f'{html.escape(str(row["Email"]))}</td>'
+                    )
+
+                    table_html += (
+                        '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                        f'{resume_cell}</td>'
+                    )
+
+                    table_html += (
+                        f'<td style="padding:12px;border-bottom:1px solid #ddd;{score_style}">'
+                        f'{html.escape(str(row["AI Match Score"]))}</td>'
+                    )
+
+                    table_html += "</tr>"
+
+                table_html += """
+                </tbody>
+                </table>
+                """
+
+                st.markdown(
+                    table_html,
+                    unsafe_allow_html=True
                 )
 
             else:
+
                 st.info("No candidates match your search.")
 
         else:
+
             st.info(
                 "No applications have been submitted for this job yet."
             )
@@ -519,7 +653,14 @@ def render_ats_dashboard():
         """,
         unsafe_allow_html=True
     )
+
+
+# =========================================================
+# RUN DASHBOARD
+# =========================================================
+
 if __name__ == "__main__":
+
     st.set_page_config(
         page_title="Talent Dashboard",
         page_icon="👥",
