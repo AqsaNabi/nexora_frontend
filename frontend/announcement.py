@@ -1,11 +1,18 @@
+import os
 import re
 import requests
 import streamlit as st
+from dotenv import load_dotenv
+
+# Load .env
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 try:
-    from api import api_request
+    from api import api_request, API_URL
 except ImportError:
     # Fallback if run standalone outside parent directory
+    API_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+
     def api_request(method, endpoint, **kwargs):
         headers = kwargs.pop("headers", {})
         token = st.session_state.get("token")
@@ -13,7 +20,7 @@ except ImportError:
             headers["Authorization"] = f"Bearer {token}"
         return requests.request(
             method,
-            f"http://127.0.0.1:8000{endpoint}",
+            f"{API_URL}{endpoint}",
             headers=headers,
             **kwargs,
         )
@@ -315,7 +322,7 @@ def call_api(endpoint, payload):
 
     except requests.exceptions.ConnectionError:
         return None, (
-            "Cannot connect to FastAPI backend at http://127.0.0.1:8000. "
+            f"Cannot connect to FastAPI backend at {API_URL}. "
             "Please ensure your backend server is running."
         )
 
@@ -772,15 +779,4 @@ if __name__ == "__main__":
         initial_sidebar_state="expanded",
     )
     announcement()
-else:
-    # If run directly by Streamlit as top-level page
-    try:
-        st.set_page_config(
-            page_title="Nexora | Announcement Studio",
-            page_icon="📢",
-            layout="wide",
-            initial_sidebar_state="expanded",
-        )
-    except Exception:
-        pass
-    announcement()
+
