@@ -1,5 +1,6 @@
 import streamlit as st
-
+# from chatbot_recruitment import chatbot_recruitment_function
+# from  detail_dashboard import detail_dashboard_function
 # Configure page at the root app entry
 st.set_page_config(
     page_title="Nexora Enterprise Portal",
@@ -58,3 +59,7 @@ elif current_page == "recruitment":
 else:
     st.session_state.page = "login"
     st.rerun()
+# elif st.session_state.page=="job_applicants":
+#     detail_dashboard_function()
+# elif st.session_state.page=="recruitment":
+#     chatbot_recruitment_function()

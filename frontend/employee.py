@@ -7,7 +7,7 @@ from api import api_request, API_URL
 def employee():
     col_back, col_refresh = st.columns([1, 5])
     with col_back:
-        if st.button("← Back to Dashboard"):
+        if st.button("← Back to Dashboard", type="primary", use_container_width=True):
             st.session_state.page = "dashboard"
             st.rerun()
 

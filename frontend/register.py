@@ -10,7 +10,7 @@ API_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 def register():
     col_back, col_space = st.columns([1, 5])
     with col_back:
-        if st.button("← Back to Login"):
+        if st.button("← Back to Login", type="primary", use_container_width=True):
             st.session_state.page = "login"
             st.rerun()
 

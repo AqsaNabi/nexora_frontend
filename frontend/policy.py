@@ -16,7 +16,7 @@ def hr_sidebar():
     st.sidebar.title("HR Portal")
 
     if st.sidebar.button(
-        "← Back to Main Dashboard",
+        "← Back to Main Dashboard", type="primary",
         use_container_width=True
     ):
         st.session_state.page = "dashboard"

@@ -21,7 +21,7 @@ def login():
             st.markdown(
                 """
                 <div style="padding: 10px 0 15px 0;">
-                    <h2 style="margin: 0; color: #17365d;">🏢 Nexora Portal</h2>
+                    <h2 style="margin: 0; color: #17365d;"> Nexora Portal</h2>
                     <p style="color: #666; font-size: 14px; margin-top: 4px;">Sign in to your account</p>
                 </div>
                 """,
@@ -41,7 +41,7 @@ def login():
                     response = requests.post(
                         f"{API_URL}/login",
                         json={"email": email.strip(), "password": password},
-                        timeout=15,
+                        timeout=60,
                     )
             except requests.exceptions.ConnectionError:
                 st.error(f"Could not connect to the backend at {API_URL}. Please ensure the server is running.")

@@ -18,6 +18,7 @@ except ImportError:
         token = st.session_state.get("token")
         if token:
             headers["Authorization"] = f"Bearer {token}"
+
         return requests.request(
             method,
             f"{API_URL}{endpoint}",
@@ -26,16 +27,8 @@ except ImportError:
         )
 
 
-# =====================================================
-# CONFIGURATION
-# =====================================================
+REQUEST_TIMEOUT = 300
 
-REQUEST_TIMEOUT = 300  # 5 minutes for heavy models like 31B
-
-
-# =====================================================
-# STYLING (SALIF HR WORKSPACE DESIGN)
-# =====================================================
 
 def apply_styling():
     st.markdown(
@@ -61,6 +54,26 @@ def apply_styling():
         [data-testid="stSidebar"] h2,
         [data-testid="stSidebar"] h3 {
             color: #17365d;
+        }
+
+        .st-key-announcement_profile_photo img {
+            display: block;
+        }
+
+        .announcement-profile-details {
+            text-align: center;
+            color: #17365d;
+            overflow-wrap: anywhere;
+        }
+
+        .announcement-profile-name {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .announcement-profile-department {
+            color: #6b7280;
+            font-size: 14px;
         }
 
         h1 {
@@ -121,10 +134,6 @@ def apply_styling():
     )
 
 
-# =====================================================
-# SESSION STATE INITIALIZATION
-# =====================================================
-
 DEFAULT_STATE = {
     "audience": "All Employees",
     "prompt": "",
@@ -143,10 +152,6 @@ def init_session_state():
         if key not in st.session_state:
             st.session_state[key] = value
 
-
-# =====================================================
-# NOTIFICATIONS
-# =====================================================
 
 def notify(message, notification_type="info"):
     st.session_state.notification = message
@@ -172,10 +177,6 @@ def show_notification():
     st.session_state.notification = ""
 
 
-# =====================================================
-# EXTRACT TITLE AND CONTENT (IGNORING THINKING TRACES)
-# =====================================================
-
 def extract_model_text(data):
     """
     Extracts the clean announcement text from backend response,
@@ -196,17 +197,20 @@ def extract_model_text(data):
 
     if isinstance(raw_announcement, list):
         text_parts = []
+
         for item in raw_announcement:
             if isinstance(item, dict):
-                # Ignore thinking blocks completely
                 if item.get("type") == "thinking":
                     continue
+
                 if "text" in item:
                     text_parts.append(str(item["text"]).strip())
                 elif item.get("type") == "text":
                     text_parts.append(str(item.get("content", "")).strip())
+
             elif isinstance(item, str):
                 text_parts.append(item.strip())
+
         if text_parts:
             return "\n\n".join(text_parts).strip()
 
@@ -222,16 +226,14 @@ def extract_title_and_content(response_text):
     if not response_text:
         return "", ""
 
-    # --- Reject entire response if it looks like a prompt template / thinking trace ---
-    # e.g. "TITLE: [Title] \n ANNOUNCEMENT: [Content]"
     placeholder_pattern = re.compile(
-        r"TITLE\s*:\s*\[Title\]", re.IGNORECASE
+        r"TITLE\s*:\s*\[Title\]",
+        re.IGNORECASE,
     )
+
     if placeholder_pattern.search(response_text):
-        # This is a leaked prompt template — ignore it entirely
         return "", ""
 
-    # Match TITLE:... up to ANNOUNCEMENT:
     title_match = re.search(
         r"TITLE\s*:\s*(.*?)(?=\n\s*ANNOUNCEMENT\s*:)",
         response_text,
@@ -247,9 +249,9 @@ def extract_title_and_content(response_text):
     if title_match:
         title = title_match.group(1).strip()
     else:
-        # Fallback: first line may start with TITLE:
         lines = response_text.split("\n", 1)
         first_line = lines[0]
+
         if first_line.upper().startswith("TITLE:"):
             title = first_line.split(":", 1)[1].strip()
         else:
@@ -260,14 +262,10 @@ def extract_title_and_content(response_text):
     else:
         content = response_text
 
-    # --- Aggressively clean title ---
-    # Remove any remaining bracketed placeholders like [Title], [Content], etc.
     title = re.sub(r"\[.*?\]", "", title)
     title = title.replace("\\n", " ").replace("\n", " ").strip()
     title = " ".join(title.split())
 
-    # --- Aggressively clean content ---
-    # Strip leading TITLE: line if accidentally included
     content = re.sub(
         r"^\s*TITLE\s*:.*?(?=\n)",
         "",
@@ -276,7 +274,6 @@ def extract_title_and_content(response_text):
         flags=re.IGNORECASE | re.DOTALL,
     ).strip()
 
-    # Strip leading ANNOUNCEMENT: prefix
     content = re.sub(
         r"^\s*ANNOUNCEMENT\s*:\s*",
         "",
@@ -285,8 +282,12 @@ def extract_title_and_content(response_text):
         flags=re.IGNORECASE,
     ).strip()
 
-    # Remove bracketed placeholders from content too
-    content = re.sub(r"\[Content\]|\[Title\]", "", content, flags=re.IGNORECASE)
+    content = re.sub(
+        r"\[Content\]|\[Title\]",
+        "",
+        content,
+        flags=re.IGNORECASE,
+    )
     content = re.sub(r"\n{3,}", "\n\n", content)
 
     if not title:
@@ -294,10 +295,6 @@ def extract_title_and_content(response_text):
 
     return title, content
 
-
-# =====================================================
-# BACKEND API CALLS (VIA api.py)
-# =====================================================
 
 def call_api(endpoint, payload):
     try:
@@ -335,10 +332,6 @@ def call_api(endpoint, payload):
     except requests.exceptions.RequestException as error:
         return None, str(error)
 
-
-# =====================================================
-# ACTION HANDLERS
-# =====================================================
 
 def generate_announcement():
     prompt = st.session_state.prompt.strip()
@@ -458,6 +451,7 @@ def approve_announcement():
 
     if data.get("status") == "approved":
         st.session_state.status = "Approved"
+
         emails_sent = data.get("emails_sent", 0)
         recipients = data.get("total_recipients", 0)
         failed = data.get("emails_failed", 0)
@@ -515,63 +509,74 @@ def reset_announcement():
     st.session_state.modify_prompt = ""
     st.session_state.status = "Not generated"
     st.session_state.technical_error = ""
+
     notify("Started a fresh announcement.", "info")
     st.rerun()
 
-
-# =====================================================
-# MAIN ANNOUNCEMENT STUDIO VIEW
-# =====================================================
 
 def announcement():
     init_session_state()
     apply_styling()
 
-    # -------------------------------------------------
-    # SIDEBAR (SALIF STYLE)
-    # -------------------------------------------------
+    # Sidebar
     with st.sidebar:
-        # Navigation back to main dashboard
-        if st.button("← Back to Dashboard", use_container_width=True):
+        if st.button(
+            "← Back to Dashboard",
+            type="primary",
+            use_container_width=True,
+        ):
             st.session_state.page = "dashboard"
             st.rerun()
 
         st.divider()
 
-        # HR Profile Information (fetched from database via login)
         profile_picture = st.session_state.get("profile_picture")
         full_name = st.session_state.get("full_name") or "HR Administrator"
 
         if profile_picture:
-            st.image(profile_picture, width=100)
+            with st.container(
+                key="announcement_profile_photo",
+                horizontal=True,
+                horizontal_alignment="center",
+            ):
+                st.image(profile_picture, width=100)
         else:
-            # Fallback avatar when running standalone without logging in first
-            st.markdown(
-                """
+            st.html("""
                 <div style="
-                    width: 70px;
-                    height: 70px;
-                    border-radius: 50%;
-                    background: #17365d;
-                    color: white;
                     display: flex;
-                    align-items: center;
                     justify-content: center;
-                    font-size: 32px;
                     margin-bottom: 8px;
                 ">
-                    👤
+                    <div style="
+                        width: 70px;
+                        height: 70px;
+                        border-radius: 50%;
+                        background: #17365d;
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 32px;
+                    ">
+                        👤
+                    </div>
                 </div>
+            """)
+
+        # Use native Markdown for the name and center it with a keyed container.
+        with st.container(key="announcement_profile_details"):
+            st.markdown(
+                """
+                <style>
+                .st-key-announcement_profile_details {
+                    text-align: center;
+                }
+                </style>
                 """,
                 unsafe_allow_html=True,
             )
-
-        st.write(f"**{full_name}**")
-        st.caption("HR Department")
-        st.divider()
-
-        st.markdown("## 📢 HR Workspace")
-        st.caption("Nexora Announcement Management")
+            st.write(f"**{full_name}**")
+            st.caption("HR Department")
 
         st.divider()
 
@@ -579,9 +584,9 @@ def announcement():
         st.selectbox(
             "Recipients",
             [
-                "All Employees",
-                "Managers",
-                "Team Leaders",
+                "Employee",
+                "Manager",
+                "Team Lead",
             ],
             key="audience",
             label_visibility="collapsed",
@@ -593,26 +598,14 @@ def announcement():
 
         st.divider()
 
-        st.markdown("### Workflow")
-        st.markdown(
-            """
-            **01** Create announcement  
-            **02** Review AI draft  
-            **03** Modify with AI  
-            **04** Approve & distribute  
-            """
-        )
-
-        st.divider()
-
-        if st.button("＋ New Announcement", use_container_width=True):
+        if st.button(
+            "＋ New Announcement",
+            type="primary",
+            use_container_width=True,
+        ):
             reset_announcement()
 
-        st.caption("Nexora HR Studio")
-
-    # -------------------------------------------------
-    # MAIN HEADER
-    # -------------------------------------------------
+    # Main header
     st.caption("HR WORKSPACE")
     st.title(" Nexora Assistant")
     st.write(
@@ -623,19 +616,14 @@ def announcement():
     st.caption(f"Selected audience: **{st.session_state.audience}**")
 
     show_notification()
-
     st.divider()
 
-    # -------------------------------------------------
-    # TECHNICAL ERROR DISPLAY
-    # -------------------------------------------------
+    # Technical error display
     if st.session_state.technical_error:
         with st.expander("⚠️ Technical details", expanded=False):
             st.code(st.session_state.technical_error)
 
-    # -------------------------------------------------
-    # STEP 01: CREATE ANNOUNCEMENT
-    # -------------------------------------------------
+    # Create announcement
     st.caption("STEP 01")
     st.subheader("Create announcement")
     st.write("Describe the announcement you want AI to prepare.")
@@ -658,9 +646,7 @@ def announcement():
         on_click=generate_announcement,
     )
 
-    # -------------------------------------------------
-    # STEP 02: REVIEW ANNOUNCEMENT (IF GENERATED)
-    # -------------------------------------------------
+    # Review announcement
     if st.session_state.announcement_body:
         st.divider()
 
@@ -682,9 +668,7 @@ def announcement():
                 height=280,
             )
 
-        # ---------------------------------------------
-        # STEP 03: MODIFY WITH AI
-        # ---------------------------------------------
+        # Modify with AI
         st.divider()
 
         st.caption("STEP 03")
@@ -708,9 +692,7 @@ def announcement():
                 on_click=modify_announcement,
             )
 
-        # ---------------------------------------------
-        # STEP 04: APPROVAL & DISTRIBUTION
-        # ---------------------------------------------
+        # Approval and distribution
         st.divider()
 
         st.caption("STEP 04")
@@ -721,7 +703,6 @@ def announcement():
         )
 
         is_approved = st.session_state.status == "Approved"
-
         approve_col, reject_col = st.columns(2)
 
         with approve_col:
@@ -742,11 +723,12 @@ def announcement():
             )
 
         if is_approved:
-            st.success("✅ This announcement has been approved and distributed. No further changes can be made.")
+            st.success(
+                "✅ This announcement has been approved and distributed. "
+                "No further changes can be made."
+            )
 
-    # -------------------------------------------------
-    # WORKFLOW STATUS
-    # -------------------------------------------------
+    # Workflow status
     st.divider()
     st.subheader("Announcement status")
 
@@ -760,16 +742,10 @@ def announcement():
     st.markdown(f"**Status: {st.session_state.status}**")
     st.caption(status_descriptions.get(st.session_state.status, ""))
 
-    # -------------------------------------------------
-    # FOOTER
-    # -------------------------------------------------
+    # Footer
     st.divider()
     st.caption("Nexora HR Automation | Internal Announcement Studio")
 
-
-# =====================================================
-# STANDALONE ENTRYPOINT
-# =====================================================
 
 if __name__ == "__main__":
     st.set_page_config(
@@ -779,4 +755,3 @@ if __name__ == "__main__":
         initial_sidebar_state="expanded",
     )
     announcement()
-
