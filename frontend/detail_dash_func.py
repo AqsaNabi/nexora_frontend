@@ -78,3 +78,4 @@ def submit_application(post_id, application_data):
 
     except ValueError:
         return None, "Application API returned an invalid JSON response."
+ 
