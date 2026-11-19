@@ -12,7 +12,7 @@ def chatbot_recruitment_function():
         sys.path.insert(0, PROJECT_ROOT)
 
 
-    from job_post_functions import (
+    from frontend.job_post_functions import (
         initialize_session_state,
         send_message,
         process_pending_message,
