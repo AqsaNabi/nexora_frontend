@@ -1,29 +1,57 @@
 import streamlit as st
-from register import register
-from login import login
-from dashboard import dashboard
-from employee import employee
-
+from chatbot_recruitment import chatbot_recruitment_function
+from  detail_dashboard import detail_dashboard_function
+# Configure page at the root app entry
+st.set_page_config(
+    page_title="Nexora Enterprise Portal",
+    page_icon="🏢",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+ 
 if "page" not in st.session_state:
     st.session_state.page = "login"
-
-
-
-if st.session_state.page == "register":
-
+ 
+# Protect internal pages: require token or redirect to login
+public_pages = ["login", "register"]
+if st.session_state.page not in public_pages and not st.session_state.get("token"):
+    st.session_state.page = "login"
+ 
+# Router
+current_page = st.session_state.page
+ 
+if current_page == "register":
+    from register import register
     register()
-elif st.session_state.page == "dashboard":
-
-    dashboard()
-
-elif st.session_state.page == "login":
-
+ 
+elif current_page == "login":
+    from login import login
     login()
-elif st.session_state.page == "employees":
+ 
+elif current_page == "dashboard":
+    from dashboard import dashboard
+    dashboard()
+ 
+elif current_page == "employees":
+    from employee import employee
     employee()
-elif st.session_state.page in ["events", "announcement"]:
+ 
+elif current_page in ["events", "announcement"]:
     from announcement import announcement
     announcement()
+ 
+elif current_page in ["policies", "policy"]:
+    from policy import policies
+    policies()
+ 
+elif current_page == "user_dashboard":
+    from user_dashboard import user_dashboard
+    user_dashboard()
 
-
-
+elif st.session_state.page=="job_applicants":
+    detail_dashboard_function()
+elif st.session_state.page=="recruitment":
+    chatbot_recruitment_function()
+else:
+    st.session_state.page = "login"
+    st.rerun()
