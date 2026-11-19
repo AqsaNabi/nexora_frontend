@@ -39,6 +39,14 @@ elif current_page == "employees":
 elif current_page in ["events", "announcement"]:
     from announcement import announcement
     announcement()
+ 
+elif current_page in ["policies", "policy"]:
+    from policy import policies
+    policies()
+ 
+elif current_page == "user_dashboard":
+    from user_dashboard import user_dashboard
+    user_dashboard()
 
 elif current_page in ["policies", "policy"]:
     from policy import policies
