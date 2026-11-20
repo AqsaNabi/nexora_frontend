@@ -2,6 +2,13 @@ import os
 import sys
 
 import streamlit as st
+from job_post_functions import (
+        initialize_session_state,
+        send_message,
+        process_pending_message,
+        approve_both_drafts,
+        start_new_job_post
+    )
 
 def chatbot_recruitment_function():
     # The frontend file is in the project root, so use this directory
@@ -12,13 +19,6 @@ def chatbot_recruitment_function():
         sys.path.insert(0, PROJECT_ROOT)
 
 
-    from frontend.job_post_functions import (
-        initialize_session_state,
-        send_message,
-        process_pending_message,
-        approve_both_drafts,
-        start_new_job_post
-    )
 
 
     # ============================================================
@@ -424,4 +424,3 @@ def chatbot_recruitment_function():
 
     if __name__ == "__main__":
         job_post_generator()
-        

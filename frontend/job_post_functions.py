@@ -5,7 +5,7 @@ import streamlit as st
 import websocket
 
 
-WEBSOCKET_URL = "ws://127.0.0.1:8001/ws/chat"
+WEBSOCKET_URL = "ws://127.0.0.1:8000/ws/chat"
 REQUEST_TIMEOUT = 600
 
 
