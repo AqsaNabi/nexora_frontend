@@ -1,9 +1,10 @@
 import json
 import uuid
+import urllib.parse  # <--- ADDED THIS
 
 import streamlit as st
 import websocket
-
+from api import api_request
 
 WEBSOCKET_URL = "ws://127.0.0.1:8000/ws/chat"
 REQUEST_TIMEOUT = 600
@@ -20,7 +21,8 @@ def initialize_session_state():
         "google_form_id": None,
         "recruitment_post_id": None,
         "pending_message": None,
-        "page": "job_post_generator"
+        "page": "job_post_generator",
+        "token": None  # <--- MAKE SURE YOUR LOGIN SAVES THE TOKEN HERE
     }
 
     for key, value in defaults.items():
@@ -33,7 +35,15 @@ def send_websocket_event(event):
 
     try:
         session_id = st.session_state.session_id
-        ws_url = f"{WEBSOCKET_URL}/{session_id}"
+        
+        # --- CHANGED THIS SECTION ---
+        # Get the token from session state and URL-encode it (JWTs have special chars)
+        token = st.session_state.get("token")
+        safe_token = urllib.parse.quote(token) if token else ""
+        
+        # Append ?token= to the URL
+        ws_url = f"{WEBSOCKET_URL}/{session_id}?token={safe_token}"
+        # ----------------------------
 
         ws = websocket.create_connection(
             ws_url,
