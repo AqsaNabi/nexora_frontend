@@ -1,212 +1,343 @@
 import streamlit as st
-import pandas as pd
 import html
  
 from detail_dash_func import (
     fetch_dashboard_data,
-    fetch_applications
+    fetch_applications,
+    start_websocket,
+    notification_queue
 )
  
+ 
+# ============================================================
+# SIDEBAR
+# ============================================================
+ 
+def display_sidebar():
+ 
+    with st.sidebar:
+ 
+        st.markdown("## HELLO HR!")
+        st.caption("HR Department")
+        st.divider()
+ 
+        if st.button(
+            "← Back to Main Dashboard",
+            key="back_to_dashboard",
+            use_container_width=True
+        ):
+ 
+            st.session_state.page = "dashboard"
+            st.rerun()
+ 
+ 
+# ============================================================
+# MAIN DASHBOARD FUNCTION
+# ============================================================
+ 
 def detail_dashboard_function():
-# =========================================================
-# BACKEND CONFIGURATION
-# =========================================================
+ 
+    # ========================================================
+    # BACKEND CONFIGURATION
+    # ========================================================
  
     API_URL = "http://127.0.0.1:8000"
  
+    # Start WebSocket connection
+    token = st.session_state.get("token")
+    start_websocket(token)
  
-    # =========================================================
+    # ========================================================
     # MAIN ATS DASHBOARD
-    # =========================================================
+    # ========================================================
  
     @st.fragment(run_every="30s")
     def render_ats_dashboard():
  
-        # =====================================================
-        # 1. CUSTOM CSS
-        # =====================================================
+        # ====================================================
+        # WEBSOCKET NOTIFICATIONS
+        # ====================================================
+ 
+        while not notification_queue.empty():
+ 
+            try:
+ 
+                notification = notification_queue.get_nowait()
+ 
+                if notification.get("type") == "new_application":
+ 
+                    st.toast(
+                        notification.get(
+                            "message",
+                            "A new application has arrived!"
+                        ),
+                        icon="🔔"
+                    )
+ 
+            except Exception:
+                break
+ 
+        # ====================================================
+        # 1. CUSTOM CSS (ORANGE & WHITE THEME)
+        # ====================================================
  
         st.markdown(
             """
-           
-    <style>
-        .stApp {
-            background: linear-gradient(
-                135deg,
-                #f8fbff 0%,
-                #eef4ff 100%
-            );
-            color: #1e293b !important;
-        }
+            <style>
  
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            min-height: 100vh;
-        }
+                .stApp {
+                    background-color: #FFF8F2; /* Warm off-white */
+                    color: #3A2A1E !important; /* Dark warm brown text */
+                }
  
-        /* Header */
-        .ta-header {
-            background: linear-gradient(
-                110deg,
-                #172554,
-                #1d4ed8,
-                #6d28d9
-            );
-            padding: 25px 30px;
-            border-radius: 15px;
-            margin-bottom: 25px;
-        }
+                .block-container {
+                    padding-top: 2rem;
+                    padding-bottom: 2rem;
+                    min-height: 100vh;
+                }
  
-        .ta-title {
-            color: #ffffff !important;
-            font-size: 30px;
-            font-weight: 800;
-            margin: 0;
-        }
+                /* Header */
  
-        .ta-subtitle {
-            color: #DBEAFE !important;
-            font-size: 14px;
-            margin-top: 7px;
-        }
+                .ta-header {
+                    background: linear-gradient(
+                        110deg,
+                        #EA580C, /* Deep orange */
+                        #F97316, /* Bright orange */
+                        #FDBA74  /* Soft peach */
+                    );
+                    padding: 25px 30px;
+                    border-radius: 15px;
+                    margin-bottom: 25px;
+                    box-shadow: 0 4px 6px rgba(234, 88, 12, 0.15);
+                }
  
-        /* Section headings */
-        .section-heading {
-            color: #1e3a8a !important;
-            font-size: 21px;
-            font-weight: 750;
-            margin-top: 15px;
-            margin-bottom: 12px;
-        }
+                .ta-title {
+                    color: #ffffff !important;
+                    font-size: 30px;
+                    font-weight: 800;
+                    margin: 0;
+                }
  
-        /* Application form button */
-        .application-form-btn {
-            display: inline-block;
-            background: linear-gradient(
-                110deg,
-                #2563eb,
-                #7c3aed
-            );
-            color: white !important;
-            padding: 11px 20px;
-            border-radius: 9px;
-            text-decoration: none !important;
-            font-weight: 700;
-            font-size: 14px;
-            margin-top: 8px;
-        }
+                .ta-subtitle {
+                    color: #FFF3E6 !important;
+                    font-size: 14px;
+                    margin-top: 7px;
+                }
  
-        /* Footer */
-        .footer {
-            text-align: center;
-            color: #64748b !important;
-            font-size: 12px;
-            padding: 25px 0 5px 0;
-            margin-top: 30px;
-            width: 100%;
-        }
+                /* Section headings */
  
-        /* Metric cards */
-        div[data-testid="stMetric"] {
-            background: #ffffff !important;
-            border: 1px solid #dbeafe;
-            padding: 15px;
-            border-radius: 12px;
-        }
+                .section-heading {
+                    color: #C2410C !important; /* Deep orange */
+                    font-size: 21px;
+                    font-weight: 750;
+                    margin-top: 15px;
+                    margin-bottom: 12px;
+                }
  
-        div[data-testid="stMetric"] label,
-        div[data-testid="stMetric"] label p {
-            color: #475569 !important;
-        }
+                /* Application form button */
  
-        div[data-testid="stMetric"] [data-testid="stMetricValue"],
-        div[data-testid="stMetric"] [data-testid="stMetricValue"] div {
-            color: #1e3a8a !important;
-        }
+                .application-form-btn {
+                    display: inline-block;
+                    background: linear-gradient(
+                        110deg,
+                        #F97316,
+                        #EA580C
+                    );
+                    color: white !important;
+                    padding: 11px 20px;
+                    border-radius: 9px;
+                    text-decoration: none !important;
+                    font-weight: 700;
+                    font-size: 14px;
+                    margin-top: 8px;
+                    transition: all 0.2s ease;
+                }
  
-        /* General text visibility */
-        .stMarkdown p,
-        .stMarkdown li,
-        .stMarkdown strong,
-        .stMarkdown span,
-        .stWrite,
-        [data-testid="stText"] {
-            color: #334155;
-        }
+                .application-form-btn:hover {
+                    background: linear-gradient(
+                        110deg,
+                        #EA580C,
+                        #C2410C
+                    );
+                    transform: translateY(-1px);
+                }
  
-        /* Labels and captions */
-        .stSelectbox label,
-        .stTextInput label,
-        .stTextArea label,
-        .stMultiSelect label,
-        .stDateInput label,
-        .stNumberInput label {
-            color: #1e3a8a !important;
-        }
+                /* Footer */
  
-    /* Force selected dropdown value to white */
-    div[data-testid="stSelectbox"] [role="combobox"],
-    div[data-testid="stSelectbox"] [role="combobox"] *,
-    div[data-testid="stSelectbox"] [data-testid="stMarkdownContainer"],
-    div[data-testid="stSelectbox"] [data-testid="stMarkdownContainer"] p {
-        color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important;
-        opacity: 1 !important;
-    }
+                .footer {
+                    text-align: center;
+                    color: #9A7B66 !important;
+                    font-size: 12px;
+                    padding: 25px 0 5px 0;
+                    margin-top: 30px;
+                    width: 100%;
+                }
  
-    /* Keep dropdown label blue */
-    div[data-testid="stSelectbox"] label,
-    div[data-testid="stSelectbox"] label * {
-        color: #1e3a8a !important;
-        -webkit-text-fill-color: #1e3a8a !important;
-    }
+                /* Metric cards */
  
-    /* Dropdown option text */
-    [data-testid="stSelectboxVirtualDropdown"] li,
-    [data-testid="stSelectboxVirtualDropdown"] li *,
-    [data-testid="stSelectboxVirtualDropdown"] [role="option"],
-    [data-testid="stSelectboxVirtualDropdown"] [role="option"] * {
-        color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important;
-    }
-        /* Job information container */
-        div[data-testid="stVerticalBlockBorderWrapper"] {
-            color: #334155 !important;
-        }
+                div[data-testid="stMetric"] {
+                    background: #ffffff !important;
+                    border: 1px solid #FED7AA;
+                    padding: 15px;
+                    border-radius: 12px;
+                    box-shadow: 0 1px 3px rgba(194, 65, 12, 0.06);
+                }
  
-        div[data-testid="stVerticalBlockBorderWrapper"] p,
-        div[data-testid="stVerticalBlockBorderWrapper"] strong,
-        div[data-testid="stVerticalBlockBorderWrapper"] span {
-            color: #334155 !important;
-        }
+                div[data-testid="stMetric"] label,
+                div[data-testid="stMetric"] label p {
+                    color: #9A7B66 !important;
+                }
  
-        /* Candidate search input */
-        input {
-            color: #1e293b !important;
-        }
+                div[data-testid="stMetric"] [data-testid="stMetricValue"],
+                div[data-testid="stMetric"] [data-testid="stMetricValue"] div {
+                    color: #C2410C !important;
+                }
  
-        /* Tables */
-        table {
-            color: #334155 !important;
-        }
+                /* General text visibility */
  
-        th {
-            color: #1e3a8a !important;
-        }
+                .stMarkdown p,
+                .stMarkdown li,
+                .stMarkdown strong,
+                .stMarkdown span,
+                .stWrite,
+                [data-testid="stText"] {
+                    color: #3A2A1E;
+                }
  
-        td {
-            color: #334155 !important;
-        }
-    </style>
+                /* Labels and captions */
  
+                .stSelectbox label,
+                .stTextInput label,
+                .stTextArea label,
+                .stMultiSelect label,
+                .stDateInput label,
+                .stNumberInput label {
+                    color: #C2410C !important;
+                }
+ 
+                /* Selected dropdown value */
+ 
+                div[data-testid="stSelectbox"] [role="combobox"],
+                div[data-testid="stSelectbox"] [role="combobox"] *,
+                div[data-testid="stSelectbox"] [data-testid="stMarkdownContainer"],
+                div[data-testid="stSelectbox"] [data-testid="stMarkdownContainer"] p {
+                    color: #3A2A1E !important;
+                    -webkit-text-fill-color: #3A2A1E !important;
+                    opacity: 1 !important;
+                }
+ 
+                /* Dropdown label */
+ 
+                div[data-testid="stSelectbox"] label,
+                div[data-testid="stSelectbox"] label * {
+                    color: #C2410C !important;
+                    -webkit-text-fill-color: #C2410C !important;
+                }
+ 
+                /* Dropdown options */
+ 
+                [data-testid="stSelectboxVirtualDropdown"] li,
+                [data-testid="stSelectboxVirtualDropdown"] li *,
+                [data-testid="stSelectboxVirtualDropdown"] [role="option"],
+                [data-testid="stSelectboxVirtualDropdown"] [role="option"] * {
+                    color: #3A2A1E !important;
+                    -webkit-text-fill-color: #3A2A1E !important;
+                }
+ 
+                /* Job information container */
+ 
+                div[data-testid="stVerticalBlockBorderWrapper"] {
+                    color: #3A2A1E !important;
+                    border: 1px solid #FED7AA !important;
+                    border-radius: 12px;
+                }
+ 
+                div[data-testid="stVerticalBlockBorderWrapper"] p,
+                div[data-testid="stVerticalBlockBorderWrapper"] strong,
+                div[data-testid="stVerticalBlockBorderWrapper"] span {
+                    color: #3A2A1E !important;
+                }
+ 
+                /* Candidate search input */
+ 
+                input {
+                    color: #3A2A1E !important;
+                    border-color: #FED7AA !important;
+                }
+ 
+                /* Tables */
+ 
+                table {
+                    color: #3A2A1E !important;
+                }
+ 
+                th {
+                    color: #C2410C !important;
+                    border-bottom: 2px solid #FED7AA !important;
+                }
+ 
+                td {
+                    color: #3A2A1E !important;
+                }
+ 
+                /* Sidebar CSS */
+ 
+                [data-testid="stSidebar"] {
+                    background: linear-gradient(
+                        180deg,
+                        #FFF3E6 0%,
+                        #FFE8D1 55%,
+                        #FED7AA 100%
+                    ) !important;
+                    border-right: 1px solid #FDBA74 !important;
+                }
+ 
+                [data-testid="stSidebar"] h1,
+                [data-testid="stSidebar"] h2,
+                [data-testid="stSidebar"] h3,
+                [data-testid="stSidebar"] p,
+                [data-testid="stSidebar"] label,
+                [data-testid="stSidebar"] span,
+                [data-testid="stSidebar"] .stMarkdown {
+                    color: #7C2D12 !important;
+                }
+ 
+                [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+                    color: #9A5B3A !important;
+                }
+ 
+                [data-testid="stSidebar"] hr {
+                    border-color: rgba(194, 65, 12, 0.25) !important;
+                }
+ 
+                [data-testid="stSidebar"] div.stButton > button {
+                    width: 100%;
+                    background: linear-gradient(
+                        135deg,
+                        #F97316,
+                        #EA580C
+                    ) !important;
+                    color: white !important;
+                    border: 1px solid rgba(255,255,255,0.35) !important;
+                    border-radius: 11px !important;
+                }
+ 
+                [data-testid="stSidebar"] div.stButton > button:hover {
+                    background: linear-gradient(
+                        135deg,
+                        #EA580C,
+                        #C2410C
+                    ) !important;
+                }
+ 
+            </style>
             """,
             unsafe_allow_html=True
         )
  
-        # =====================================================
+        # ====================================================
         # 2. HEADER
-        # =====================================================
+        # ====================================================
  
         st.markdown(
             '<div class="ta-header">'
@@ -219,9 +350,9 @@ def detail_dashboard_function():
             unsafe_allow_html=True
         )
  
-        # =====================================================
+        # ====================================================
         # 3. FETCH DASHBOARD DATA
-        # =====================================================
+        # ====================================================
  
         dashboard_data, dashboard_error = fetch_dashboard_data()
  
@@ -264,9 +395,9 @@ def detail_dashboard_function():
  
             st.info("No job postings are currently available.")
  
-        # =====================================================
+        # ====================================================
         # 4. DASHBOARD OVERVIEW
-        # =====================================================
+        # ====================================================
  
         st.markdown(
             '<div class="section-heading">Overview</div>',
@@ -318,9 +449,9 @@ def detail_dashboard_function():
         with metric2:
             st.metric("Total Applicants", total_applications)
  
-        # =====================================================
+        # ====================================================
         # 5. SELECT JOB POSTING
-        # =====================================================
+        # ====================================================
  
         st.markdown(
             '<div class="section-heading">Select Job Posting</div>',
@@ -398,9 +529,9 @@ def detail_dashboard_function():
                 disabled=True
             )
  
-        # =====================================================
+        # ====================================================
         # 6. JOB INFORMATION
-        # =====================================================
+        # ====================================================
  
         st.markdown(
             '<div class="section-heading">Job Information</div>',
@@ -445,47 +576,30 @@ def detail_dashboard_function():
  
             st.write(str(job_description))
  
-        # =====================================================
-        # 7. APPLICATION FORM
-        # =====================================================
+            # Application form URL
  
-        st.divider()
- 
-        st.markdown(
-            '<div class="section-heading">Application Form</div>',
-            unsafe_allow_html=True
-        )
- 
-        if form_url and isinstance(form_url, str):
- 
-            if form_url.startswith(("https://", "http://")):
- 
-                st.markdown(
-                    f"""
-                    <a href="{html.escape(form_url, quote=True)}"
-                    target="_blank"
-                    class="application-form-btn">
-                        Open Google Form ↗
-                    </a>
-                    """,
-                    unsafe_allow_html=True
-                )
- 
-            else:
- 
-                st.caption(
-                    "Application form link is not a valid URL."
-                )
- 
-        else:
- 
-            st.caption(
-                "Application form link is not available."
+            application_form_url = (
+                form_url
+                or "https://docs.google.com/forms/d/e/1FAIpQLScattpxyxoRbIjJGh_LlZrisftpR45giWaKZY2aC7HAmq3jqw/viewform"
             )
  
-        # =====================================================
-        # 8. AI CANDIDATE EVALUATION
-        # =====================================================
+            st.markdown(
+                f"""
+                **Application Form**
+ 
+                <a href="{html.escape(str(application_form_url), quote=True)}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="application-form-btn">
+                    Open Google Form ↗
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
+ 
+        # ====================================================
+        # 7. AI CANDIDATE EVALUATION
+        # ====================================================
  
         st.markdown(
             '<div class="section-heading">AI Candidate Evaluation</div>',
@@ -498,9 +612,9 @@ def detail_dashboard_function():
             "alongside their application details."
         )
  
-        # =====================================================
-        # 9. CANDIDATE APPLICATIONS
-        # =====================================================
+        # ====================================================
+        # 8. CANDIDATE APPLICATIONS
+        # ====================================================
  
         st.markdown(
             '<div class="section-heading">Candidate Applications</div>',
@@ -538,7 +652,11 @@ def detail_dashboard_function():
  
             elif isinstance(applications_response, dict):
  
-                for key in ["applications", "candidates", "data"]:
+                for key in [
+                    "applications",
+                    "candidates",
+                    "data"
+                ]:
  
                     value = applications_response.get(key)
  
@@ -604,17 +722,21 @@ def detail_dashboard_function():
  
                                 formatted_score = str(candidate_score)
  
-                        # Check whether the candidate uploaded a resume
+                        # Check whether candidate uploaded a resume
+ 
                         resume_uploaded = bool(
                             application.get("has_resume", False)
                         )
  
-                        # Create the resume URL
+                        # Create resume URL
+ 
                         resume_url = None
  
                         if resume_uploaded:
  
-                            application_id = application.get("application_id")
+                            application_id = application.get(
+                                "application_id"
+                            )
  
                             if application_id is not None:
  
@@ -643,7 +765,10 @@ def detail_dashboard_function():
  
                         })
  
-                    # Build table with clickable resume links
+                    # ============================================
+                    # BUILD TABLE WITH CLICKABLE RESUME LINKS
+                    # ============================================
+ 
                     table_html = """
                     <table style="
                         width:100%;
@@ -651,13 +776,13 @@ def detail_dashboard_function():
                         background:white;
                     ">
                     <thead>
-                        <tr>
-                            <th style="padding:12px;text-align:left;">Candidate Name</th>
-                            <th style="padding:12px;text-align:left;">Phone</th>
-                            <th style="padding:12px;text-align:left;">Email</th>
-                            <th style="padding:12px;text-align:left;">Resume</th>
-                            <th style="padding:12px;text-align:left;">AI Match Score</th>
-                        </tr>
+                    <tr>
+                        <th style="padding:12px;text-align:left;">Candidate Name</th>
+                        <th style="padding:12px;text-align:left;">Phone</th>
+                        <th style="padding:12px;text-align:left;">Email</th>
+                        <th style="padding:12px;text-align:left;">Resume</th>
+                        <th style="padding:12px;text-align:left;">AI Match Score</th>
+                    </tr>
                     </thead>
                     <tbody>
                     """
@@ -670,7 +795,8 @@ def detail_dashboard_function():
  
                             resume_cell = (
                                 f'<a href="{html.escape(resume_url, quote=True)}" '
-                                f'target="_blank" rel="noopener noreferrer">'
+                                f'target="_blank" rel="noopener noreferrer" '
+                                f'style="color:#F97316;font-weight:bold;text-decoration:none;">'
                                 f'View PDF</a>'
                             )
  
@@ -679,7 +805,7 @@ def detail_dashboard_function():
                             resume_cell = "None"
  
                         score_style = (
-                            "color:green;font-weight:bold;"
+                            "color:#16A34A;font-weight:bold;"
                             if str(row["AI Match Score"]).endswith("%")
                             else ""
                         )
@@ -687,27 +813,27 @@ def detail_dashboard_function():
                         table_html += "<tr>"
  
                         table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
                             f'{html.escape(str(row["Candidate Name"]))}</td>'
                         )
  
                         table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
                             f'{html.escape(str(row["Phone"]))}</td>'
                         )
  
                         table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
                             f'{html.escape(str(row["Email"]))}</td>'
                         )
  
                         table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #ddd;">'
+                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
                             f'{resume_cell}</td>'
                         )
  
                         table_html += (
-                            f'<td style="padding:12px;border-bottom:1px solid #ddd;{score_style}">'
+                            f'<td style="padding:12px;border-bottom:1px solid #FED7AA;{score_style}">'
                             f'{html.escape(str(row["AI Match Score"]))}</td>'
                         )
  
@@ -733,9 +859,9 @@ def detail_dashboard_function():
                     "No applications have been submitted for this job yet."
                 )
  
-        # =====================================================
-        # 10. FOOTER
-        # =====================================================
+        # ====================================================
+        # 9. FOOTER
+        # ====================================================
  
         st.markdown(
             """
@@ -746,17 +872,10 @@ def detail_dashboard_function():
             unsafe_allow_html=True
         )
  
+    # ========================================================
+    # RUN SIDEBAR AND DASHBOARD
+    # ========================================================
  
-    # =========================================================
-    # RUN DASHBOARD
-    # =========================================================
+    display_sidebar()
  
-    if __name__ == "__main__":
- 
-        st.set_page_config(
-            page_title="Talent Dashboard",
-            page_icon="👥",
-            layout="wide"
-        )
- 
-        render_ats_dashboard()
+    render_ats_dashboard()
