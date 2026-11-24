@@ -3,9 +3,11 @@ import requests
 import streamlit as st
 import websocket
 import json
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-API_URL = "http://127.0.0.1:8000"
-WS_URL = "ws://127.0.0.1:8000"
+API_URL = os.getenv("API_BASE_URL", API_URL).rstrip("/")
+WS_URL = os.getenv(WS_URL)
 
 
 def api_request(method, endpoint, **kwargs):

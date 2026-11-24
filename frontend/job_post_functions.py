@@ -1,12 +1,16 @@
 import json
 import uuid
 import urllib.parse  # <--- ADDED THIS
-
+import os
 import streamlit as st
 import websocket
 from api import api_request
+from dotenv import load_dotenv
 
-WEBSOCKET_URL = "ws://127.0.0.1:8000/ws/chat"
+
+load_dotenv()
+x= os.getenv("WS_URL")
+WEBSOCKET_URL = f"{x}/ws/chat"
 REQUEST_TIMEOUT = 600
 
 
