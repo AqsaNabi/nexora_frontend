@@ -4,8 +4,8 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-API_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+load_dotenv()
+API_URL = os.getenv("API_URL")
 
 def register():
     col_back, col_space = st.columns([1, 5])

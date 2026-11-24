@@ -11,7 +11,7 @@ try:
     from api import api_request, API_URL
 except ImportError:
     # Fallback if run standalone outside parent directory
-    API_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+    API_URL = os.getenv("API_URL")
 
     def api_request(method, endpoint, **kwargs):
         headers = kwargs.pop("headers", {})

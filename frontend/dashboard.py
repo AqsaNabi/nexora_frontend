@@ -293,7 +293,7 @@ def dashboard():
                 st.info("The Jobs and Applicants module will be connected here.")
  
     st.write("")
-    st.caption("Nexora HR Management System | Powered by Salif Backend")
+    st.caption("Nexora HR Management System ")
  
  
 if __name__ == "__main__":
