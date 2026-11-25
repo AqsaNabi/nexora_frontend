@@ -13,7 +13,7 @@ load_dotenv(os.path.join(_parent_dir, ".env"))
 load_dotenv()  # Fallback to current working directory
 
 # Single source of truth for the backend base URL
-API_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+API_URL = os.getenv("API_BASE_URL", "https://nexora-8xng.onrender.com").rstrip("/")
 
 
 def get_api_url(endpoint: str = "") -> str:

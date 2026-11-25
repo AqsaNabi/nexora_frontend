@@ -14,7 +14,7 @@ from api import api_request
 # CONFIGURATION
 # =========================================================
  
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://nexora-8xng.onrender.com"
 REQUEST_TIMEOUT = 30
  
 WS_URL = "ws://127.0.0.1:8000/ws/ats/notifications"

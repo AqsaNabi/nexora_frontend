@@ -4,8 +4,8 @@ import streamlit as st
 import websocket
 import json
 
-API_URL = "http://127.0.0.1:8000"
-WS_URL = "ws://127.0.0.1:8000"
+API_URL = "https://nexora-8xng.onrender.com"
+WS_URL = "wss://nexora-8xng.onrender.com"
 
 
 def api_request(method, endpoint, **kwargs):
