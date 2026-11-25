@@ -3,6 +3,8 @@ import requests
 import streamlit as st
 import websocket
 import json
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 API_URL = "https://nexora-8xng.onrender.com"
 WS_URL = "wss://nexora-8xng.onrender.com"

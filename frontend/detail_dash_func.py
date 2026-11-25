@@ -3,12 +3,13 @@ import queue
 import threading
 import time
 import urllib.parse  # <--- ADDED THIS
- 
+import os
 import websocket
 from requests.exceptions import RequestException
  
 from api import api_request
- 
+from dotenv import load_dotenv
+load_dotenv()
  
 # =========================================================
 # CONFIGURATION
@@ -16,8 +17,8 @@ from api import api_request
  
 API_URL = "https://nexora-8xng.onrender.com"
 REQUEST_TIMEOUT = 30
- 
-WS_URL = "ws://127.0.0.1:8000/ws/ats/notifications"
+X=os.getenv("WS_URL") 
+WS_URL = os.getenv(f"{X}/ws/ats/notifications")
  
  
 # =========================================================
