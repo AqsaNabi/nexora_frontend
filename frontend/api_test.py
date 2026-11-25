@@ -6,8 +6,8 @@ import json
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-API_URL = os.getenv("API_BASE_URL", API_URL).rstrip("/")
-WS_URL = os.getenv(WS_URL)
+API_URL = "https://nexora-8xng.onrender.com"
+WS_URL = "wss://nexora-8xng.onrender.com"
 
 
 def api_request(method, endpoint, **kwargs):

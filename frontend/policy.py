@@ -1,7 +1,7 @@
 
 import streamlit as st
 import requests
-
+from html import escape
 from api import api_request, API_URL
 
 UPDATE_POLICY_ENDPOINT = "/policies/upload"
@@ -12,105 +12,81 @@ UPDATE_POLICY_ENDPOINT = "/policies/upload"
 # ==========================================
 
 def hr_sidebar():
+    with st.sidebar:
+        if st.button(
+            "←Back",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state.page = "dashboard"
+            st.rerun()
 
-    st.sidebar.title("HR Portal")
+        st.divider()
 
-    if st.sidebar.button(
-        "← Back to Main Dashboard", type="primary",
-        use_container_width=True
-    ):
-        st.session_state.page = "dashboard"
-        st.rerun()
+        profile_pic = st.session_state.get("profile_picture")
+        if profile_pic:
+            try:
+                with st.container(
+                    key="policy_profile_photo",
+                    horizontal=True,
+                    horizontal_alignment="center",
+                ):
+                    st.image(profile_pic, width=112)
+            except Exception:
+                pass
 
-    st.sidebar.divider()
+        full_name = escape(
+            str(st.session_state.get("full_name", "HR Administrator"))
+        )
 
-    # HR Profile Picture
-    profile_pic = st.session_state.get("profile_picture")
+        st.html(f"""
+            <div class="policy-profile-details">
+                <div class="policy-profile-name">{full_name}</div>
+                <div class="policy-profile-department">
+                    Human Resources Department
+                </div>
+            </div>
+        """)
 
-    if profile_pic:
-        try:
-            st.sidebar.image(profile_pic, width=110)
-        except Exception:
-            pass
-
-    # HR Full Name
-    full_name = st.session_state.get(
-        "full_name",
-        "HR Administrator"
-    )
-
-    st.sidebar.write(f"**{full_name}**")
-    st.sidebar.caption("Human Resources Department")
-
-    st.sidebar.divider()
-
-
+        st.divider()
 # ==========================================
 # PAGE STYLING
 # ==========================================
 
 def apply_styles():
-
     st.markdown("""
     <style>
 
-    .stApp {
-        background-color: #f5f6fc;
-    }
+    .st-key-policy_profile_photo img {
+    display: block;
+    width: 112px;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+    border: 0;
+}
 
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
-        max-width: 1200px;
-    }
+.policy-profile-details {
+    width: 100%;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
 
-    h1, h2, h3 {
-        color: #20265E !important;
-    }
+.policy-profile-name {
+    font-weight: 700;
+}
 
-    .policy-header {
-        background: linear-gradient(
-            120deg,
-            #20265E 0%,
-            #3730A3 55%,
-            #5148C9 100%
-        );
-        padding: 30px 34px;
-        border-radius: 16px;
-        margin-bottom: 22px;
-        box-shadow: 0 4px 16px rgba(32, 38, 94, 0.12);
-    }
-
-    .policy-header h1 {
-        color: #ffffff !important;
-        font-size: 28px;
-        font-weight: 700;
-        margin: 0 0 10px 0;
-        padding: 0;
-    }
-
-    .policy-header .subtitle {
-        color: #e0e4ff;
-        font-size: 14px;
-        line-height: 1.6;
-        margin: 0;
-    }
-
-    div.stButton > button,
-    div.stFormSubmitButton > button {
-        border-radius: 9px;
-        font-weight: 600;
-        min-height: 44px;
-    }
-
-    label {
-        color: #20265E !important;
-        font-weight: 600 !important;
-    }
+.policy-profile-department {
+    margin-top: 4px;
+    font-size: 0.875rem;
+    opacity: 0.7;
+}
 
     </style>
     """, unsafe_allow_html=True)
-
 
 # ==========================================
 # POLICY UPLOAD API

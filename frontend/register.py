@@ -4,8 +4,8 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-load_dotenv()
-API_URL = os.getenv("API_URL")
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+API_URL = os.getenv("API_BASE_URL", "https://nexora-8xng.onrender.com").rstrip("/")
 
 def register():
     col_back, col_space = st.columns([1, 5])
@@ -14,7 +14,7 @@ def register():
             st.session_state.page = "login"
             st.rerun()
 
-    st.title("👤 Employee Registration")
+    st.title(" Employee Registration👤")
     st.caption("Create your employee account to join Nexora.")
 
     with st.form("employee_registration_form"):

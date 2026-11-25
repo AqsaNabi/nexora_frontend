@@ -15,7 +15,7 @@ load_dotenv()
 # CONFIGURATION
 # =========================================================
  
-API_URL = os.getenv("API_URL")
+API_URL = "https://nexora-8xng.onrender.com"
 REQUEST_TIMEOUT = 30
 X=os.getenv("WS_URL") 
 WS_URL = os.getenv(f"{X}/ws/ats/notifications")
