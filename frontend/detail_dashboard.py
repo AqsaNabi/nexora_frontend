@@ -10,7 +10,6 @@ from detail_dash_func import (
 from dotenv import load_dotenv
 import os
 load_dotenv()
-
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -698,6 +697,7 @@ def detail_dashboard_function():
  
                         filtered_applications.append(application)
  
+
                 if filtered_applications:
                     
                     st.write("") # spacing
@@ -729,7 +729,6 @@ def detail_dashboard_function():
                         col1.write(application.get("full_name", "N/A"))
                         col2.write(application.get("phone", "N/A"))
                         col3.write(application.get("email", "N/A"))
-                        
                         with col4:
                             if resume_uploaded and application_id is not None:
                                 if st.button("View PDF", key=f"view_{application_id}"):
@@ -741,24 +740,21 @@ def detail_dashboard_function():
                                     with st.spinner("Fetching PDF..."):
                                         res = requests.get(url, headers=headers)
                                         if res.status_code == 200:
-                                            import base64
-                                            # Convert to base64 to embed directly
-                                            base64_pdf = base64.b64encode(res.content).decode('utf-8')
-                                            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500" type="application/pdf"></iframe>'
+                                            import tempfile
+                                            # Create a temporary file to save the PDF
+                                            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                                                tmp_file.write(res.content)
+                                                tmp_file_path = tmp_file.name
                                             
-                                            # Store in session state to keep it visible
-                                            st.session_state[f"pdf_html_{application_id}"] = pdf_display
+                                            # Store the path in session state
+                                            st.session_state[f"pdf_path_{application_id}"] = tmp_file_path
                                         else:
                                             st.error("Failed to load PDF.")
                             
-                            # If the PDF is loaded, show it here natively!
-                            if st.session_state.get(f"pdf_html_{application_id}"):
-                                import streamlit.components.v1 as components
-                                components.html(
-                                    st.session_state[f"pdf_html_{application_id}"],
-                                    height=500
-                                )
-                                
+                            # Use Streamlit's native PDF viewer (st.pdf)
+                            if st.session_state.get(f"pdf_path_{application_id}"):
+                                # Streamlit's st.pdf takes a file path or bytes
+                                st.pdf(st.session_state[f"pdf_path_{application_id}"], height=500)
                         with col5:
                             if str(formatted_score).endswith("%"):
                                 st.markdown(f"<span style='color:#16A34A;font-weight:bold;'>{formatted_score}</span>", unsafe_allow_html=True)
@@ -768,14 +764,17 @@ def detail_dashboard_function():
                         st.divider()
                     
                 else:
-                    # Handling empty search results or no applications
+                    # This is the fix for Issue 2: Handling empty applications properly
                     if search_query:
                         st.warning("No candidates match your search.")
                     else:
                         st.info("No applications have been submitted for this job yet.")
+ 
             else:
-                # Handling zero applications for the job
-                st.info("No applications have been submitted for this job yet.")
+ 
+                st.info(
+                    "No applications have been submitted for this job yet."
+                )
  
         # ====================================================
         # 9. FOOTER
