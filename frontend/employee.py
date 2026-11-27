@@ -1,13 +1,15 @@
 import streamlit as st
 import pandas as pd
 import requests
+import os
 from api import api_request, API_URL
-
+from dotenv import load_dotenv
+load_dotenv()
 
 def employee():
     col_back, col_refresh = st.columns([1, 5])
     with col_back:
-        if st.button("← Back to Dashboard", type="primary", use_container_width=True):
+        if st.button("← Back", type="primary", use_container_width=True):
             st.session_state.page = "dashboard"
             st.rerun()
 

@@ -7,6 +7,34 @@ from detail_dash_func import (
     start_websocket,
     notification_queue
 )
+from dotenv import load_dotenv
+import os
+load_dotenv()
+# ============================================================
+# SIDEBAR
+# ============================================================
+ 
+def display_sidebar():
+ 
+    with st.sidebar:
+ 
+        st.markdown("## HELLO HR!")
+        st.caption("HR Department")
+        st.divider()
+ 
+        if st.button(
+            "← Back to Main Dashboard",
+            key="back_to_dashboard",
+            use_container_width=True
+        ):
+ 
+            st.session_state.page = "dashboard"
+            st.rerun()
+ 
+ 
+# ============================================================
+# MAIN DASHBOARD FUNCTION
+# ============================================================
  
  
 # ============================================================
@@ -40,8 +68,8 @@ def detail_dashboard_function():
     # ========================================================
     # BACKEND CONFIGURATION
     # ========================================================
- 
-    API_URL = "http://127.0.0.1:8000"
+    
+    API_URL = os.getenv("API_URL")
  
     # Start WebSocket connection
     token = st.session_state.get("token")

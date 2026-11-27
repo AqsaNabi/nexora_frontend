@@ -3,9 +3,11 @@ import requests
 import streamlit as st
 import websocket
 import json
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-API_URL = "http://127.0.0.1:8001"
-WS_URL = "ws://127.0.0.1:8000"
+API_URL = "https://nexora-8xng.onrender.com"
+WS_URL = "wss://nexora-8xng.onrender.com"
 
 
 def api_request(method, endpoint, **kwargs):

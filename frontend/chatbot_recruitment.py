@@ -12,7 +12,7 @@ def chatbot_recruitment_function():
         sys.path.insert(0, PROJECT_ROOT)
 
 
-    from frontend.job_post_functions import (
+    from job_post_functions import (
         initialize_session_state,
         send_message,
         process_pending_message,
@@ -22,16 +22,17 @@ def chatbot_recruitment_function():
 
 
     # ============================================================
-    # STYLING
+    # STYLING  (ORANGE & WHITE THEME)
     # ============================================================
 
     def apply_styling():
         st.markdown(
             """
             <style>
+            /* ---------- GLOBAL / PAGE ---------- */
             .stApp {
-                background-color: #F7F5FF;
-                color: #26334A;
+                background-color: #FFF8F2;          /* warm off-white */
+                color: #3A2A1E;                      /* dark warm brown text */
             }
 
             .block-container {
@@ -41,7 +42,7 @@ def chatbot_recruitment_function():
             }
 
             h1, h2, h3, h4 {
-                color: #183B66 !important;
+                color: #C2410C !important;           /* deep orange headings */
                 font-weight: 750 !important;
             }
 
@@ -49,50 +50,72 @@ def chatbot_recruitment_function():
             .stMarkdown li,
             .stMarkdown span,
             .stMarkdown label {
-                color: #26334A !important;
+                color: #3A2A1E !important;
             }
 
+            /* ---------- CHAT MESSAGES ---------- */
             [data-testid="stChatMessage"] {
                 background-color: #FFFFFF;
-                border: 1px solid #E5DDF8;
+                border: 1px solid #FED7AA;           /* soft orange border */
                 border-radius: 14px;
                 padding: 16px;
+                box-shadow: 0 1px 3px rgba(194, 65, 12, 0.06);
             }
 
+            /* make user vs assistant bubbles slightly distinct */
+            [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+                background-color: #FFF3E6;           /* pale orange for user */
+                border-color: #FDBA74;
+            }
+
+            /* ---------- TEXT INPUTS / TEXTAREAS ---------- */
             .stTextInput input,
             .stTextArea textarea {
                 background-color: #FFFFFF !important;
-                color: #26334A !important;
-                border: 1px solid #CFC3EF !important;
+                color: #3A2A1E !important;
+                border: 1px solid #FED7AA !important;
                 border-radius: 10px !important;
             }
 
             .stTextInput input::placeholder,
             .stTextArea textarea::placeholder {
-                color: #7B8497 !important;
+                color: #9A7B66 !important;
             }
 
+            /* ---------- BUTTONS ---------- */
             div.stButton > button {
                 min-height: 44px;
                 border-radius: 10px;
                 font-weight: 600;
-                border: 1px solid #DCE4EF;
+                border: 1px solid #FED7AA;
+                color: #C2410C;
+                background-color: #FFFFFF;
+            }
+
+            div.stButton > button:hover {
+                background-color: #FFF3E6;
+                border-color: #FDBA74;
             }
 
             div.stButton > button[kind="primary"] {
-                background: linear-gradient(135deg, #526FE8, #7656CE) !important;
-                border: 1px solid #526FE8 !important;
+                background: linear-gradient(135deg, #F97316, #EA580C) !important;
+                border: 1px solid #EA580C !important;
                 color: white !important;
             }
 
+            div.stButton > button[kind="primary"]:hover {
+                background: linear-gradient(135deg, #EA580C, #C2410C) !important;
+            }
+
+            /* ---------- SIDEBAR ---------- */
             [data-testid="stSidebar"] {
                 background: linear-gradient(
                     180deg,
-                    #142D4E 0%,
-                    #203F68 55%,
-                    #352D68 100%
+                    #FFF3E6 0%,
+                    #FFE8D1 55%,
+                    #FED7AA 100%
                 ) !important;
-                border-right: 1px solid #304F78 !important;
+                border-right: 1px solid #FDBA74 !important;
             }
 
             [data-testid="stSidebar"] h1,
@@ -102,48 +125,71 @@ def chatbot_recruitment_function():
             [data-testid="stSidebar"] label,
             [data-testid="stSidebar"] span,
             [data-testid="stSidebar"] .stMarkdown {
-                color: white !important;
+                color: #7C2D12 !important;           /* dark burnt-orange text */
             }
 
             [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
-                color: #C6D5EB !important;
+                color: #9A5B3A !important;
             }
 
             [data-testid="stSidebar"] hr {
-                border-color: rgba(255,255,255,0.22) !important;
+                border-color: rgba(194, 65, 12, 0.25) !important;
             }
 
             [data-testid="stSidebar"] div.stButton > button {
                 width: 100%;
-                background: linear-gradient(135deg, #526FE8, #7656CE) !important;
+                background: linear-gradient(135deg, #F97316, #EA580C) !important;
                 color: white !important;
-                border: 1px solid rgba(255,255,255,0.18) !important;
+                border: 1px solid rgba(255,255,255,0.35) !important;
                 border-radius: 11px !important;
             }
 
+            [data-testid="stSidebar"] div.stButton > button:hover {
+                background: linear-gradient(135deg, #EA580C, #C2410C) !important;
+            }
+
+            /* ---------- EXPANDERS / CODE / DIVIDERS ---------- */
             [data-testid="stExpander"] {
                 background-color: #FFFFFF;
-                border: 1px solid #E5DDF8;
+                border: 1px solid #FED7AA;
                 border-radius: 12px;
             }
 
             [data-testid="stCode"] {
-                background-color: #F0ECFA !important;
+                background-color: #FFF3E6 !important;
                 border-radius: 10px;
             }
 
+            /* ---------- CHAT INPUT (bottom bar) ---------- */
+            div[data-testid="stChatInput"] textarea {
+                color: #3A2A1E !important;
+                -webkit-text-fill-color: #3A2A1E !important;
+                caret-color: #C2410C !important;
+            }
+
+            div[data-testid="stChatInput"] textarea::placeholder {
+                color: #9A7B66 !important;
+                -webkit-text-fill-color: #9A7B66 !important;
+            }
+
+            /* chat input container border */
             div[data-testid="stChatInput"] {
-                    color: white !important;
-                -webkit-text-fill-color: white !important;
-                caret-color: white !important;
+                border: 1px solid #FDBA74 !important;
+                border-radius: 12px !important;
+                background-color: #FFFFFF !important;
             }
 
             hr {
-                border-color: #E2DCF0 !important;
+                border-color: #FED7AA !important;
             }
 
             .stCaption {
-                color: #64748B !important;
+                color: #9A7B66 !important;
+            }
+
+            /* ---------- ALERTS ---------- */
+            [data-testid="stAlert"] {
+                border-radius: 10px;
             }
             </style>
             """,
@@ -157,27 +203,22 @@ def chatbot_recruitment_function():
 
     def display_sidebar():
         with st.sidebar:
+    
             st.markdown("## HELLO HR!")
+    
             st.caption("HR Department")
+    
             st.divider()
-
+    
             if st.button(
                 "← Back to Main Dashboard",
                 key="back_to_dashboard",
                 use_container_width=True
             ):
+    
                 st.session_state.page = "dashboard"
+    
                 st.rerun()
-
-            st.divider()
-            st.markdown("### Form Link Generator")
-
-            if st.button(
-                "＋ Start New Job Post",
-                key="sidebar_new_job",
-                use_container_width=True
-            ):
-                start_new_job_post()
 
 
     # ============================================================
@@ -209,15 +250,15 @@ def chatbot_recruitment_function():
         with center_content:
             st.markdown(
                 """
-                <h3 style='text-align:center; color:#526FE8;'>
+                <h3 style='text-align:center; color:#F97316;'>
                     Let's Get Started!
                 </h3>
-                <h2 style='text-align:center; color:#183B66;'>
+                <h2 style='text-align:center; color:#C2410C;'>
                     Your hiring journey starts here.
                 </h2>
                 <p style="
                     text-align:center;
-                    color:#64748B;
+                    color:#9A7B66;
                     font-size:16px;
                     line-height:1.8;
                 ">
@@ -422,6 +463,6 @@ def chatbot_recruitment_function():
             )
 
 
-    if __name__ == "__main__":
-        job_post_generator()
-        
+    # if __name__ == "__main__":
+    job_post_generator()
+# chatbot_recruitment_function()

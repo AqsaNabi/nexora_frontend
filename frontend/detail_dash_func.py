@@ -3,19 +3,32 @@ import queue
 import threading
 import time
 import urllib.parse  # <--- ADDED THIS
- 
+import os
 import websocket
 from requests.exceptions import RequestException
  
 from api import api_request
- 
+from dotenv import load_dotenv
+load_dotenv()
  
 # =========================================================
 # CONFIGURATION
 # =========================================================
  
-API_URL = "http://127.0.0.1:8000"
+API_URL = "API_URL"
 REQUEST_TIMEOUT = 30
+X=os.getenv("WS_URL") 
+WS_URL = os.getenv(f"{X}/ws/ats/notifications")
+ 
+ 
+# =========================================================
+# WEBSOCKET CONFIGURATION
+# =========================================================
+ 
+notification_queue = queue.Queue()
+ 
+websocket_thread = None
+websocket_lock = threading.Lock()
  
 WS_URL = "ws://127.0.0.1:8000/ws/ats/notifications"
  
@@ -152,7 +165,6 @@ def websocket_listener(token):
             # Append the token to the URL
             safe_token = urllib.parse.quote(token) if token else ""
             full_ws_url = f"{WS_URL}?token={safe_token}"
- 
             ws = websocket.WebSocketApp(
                 full_ws_url,   # <--- using the URL with the token now
                 on_open=on_open,

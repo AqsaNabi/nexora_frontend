@@ -3,7 +3,7 @@ import re
 import requests
 import streamlit as st
 from dotenv import load_dotenv
-
+from html import escape
 # Load .env
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
@@ -11,7 +11,7 @@ try:
     from api import api_request, API_URL
 except ImportError:
     # Fallback if run standalone outside parent directory
-    API_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+    API_URL = os.getenv("API_URL")
 
     def api_request(method, endpoint, **kwargs):
         headers = kwargs.pop("headers", {})
@@ -57,24 +57,49 @@ def apply_styling():
         }
 
         .st-key-announcement_profile_photo img {
-            display: block;
-        }
+    display: block;
+    width: 112px;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+    border: 0;
+}
 
-        .announcement-profile-details {
-            text-align: center;
-            color: #17365d;
-            overflow-wrap: anywhere;
-        }
+.announcement-profile-placeholder {
+    display: grid;
+    place-items: center;
+    width: 112px;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+    margin-inline: auto;
+    border-radius: 50%;
+    background-color: #17365d;
+    color: white;
+    font-size: 32px;
+}
 
-        .announcement-profile-name {
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
+.announcement-profile-details,
+.announcement-audience-heading,
+.announcement-audience-help {
+    width: 100%;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
 
-        .announcement-profile-department {
-            color: #6b7280;
-            font-size: 14px;
-        }
+.announcement-profile-name {
+    color: #17365d;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.announcement-profile-department,
+.announcement-audience-help {
+    color: #6b7280;
+    font-size: 14px;
+}
 
         h1 {
             color: #17365d !important;
@@ -463,7 +488,7 @@ def approve_announcement():
             )
         else:
             notify(
-                f"🎉 Announcement approved! Sent to all {emails_sent} recipients.",
+                f" Announcement approved! Sent to all {emails_sent} recipients.",
                 "success",
             )
     else:
@@ -519,9 +544,10 @@ def announcement():
     apply_styling()
 
     # Sidebar
+       # Sidebar
     with st.sidebar:
         if st.button(
-            "← Back to Dashboard",
+            "← Back ",
             type="primary",
             use_container_width=True,
         ):
@@ -531,7 +557,9 @@ def announcement():
         st.divider()
 
         profile_picture = st.session_state.get("profile_picture")
-        full_name = st.session_state.get("full_name") or "HR Administrator"
+        full_name = escape(
+            str(st.session_state.get("full_name") or "HR Administrator")
+        )
 
         if profile_picture:
             with st.container(
@@ -539,62 +567,37 @@ def announcement():
                 horizontal=True,
                 horizontal_alignment="center",
             ):
-                st.image(profile_picture, width=100)
+                st.image(profile_picture, width=112)
         else:
             st.html("""
-                <div style="
-                    display: flex;
-                    justify-content: center;
-                    margin-bottom: 8px;
-                ">
-                    <div style="
-                        width: 70px;
-                        height: 70px;
-                        border-radius: 50%;
-                        background: #17365d;
-                        color: white;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 32px;
-                    ">
-                        👤
-                    </div>
+                <div class="announcement-profile-placeholder" aria-hidden="true">
+                    👤
                 </div>
             """)
 
-        # Use native Markdown for the name and center it with a keyed container.
-        with st.container(key="announcement_profile_details"):
-            st.markdown(
-                """
-                <style>
-                .st-key-announcement_profile_details {
-                    text-align: center;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.write(f"**{full_name}**")
-            st.caption("HR Department")
+        st.html(f"""
+            <div class="announcement-profile-details">
+                <div class="announcement-profile-name">{full_name}</div>
+                <div class="announcement-profile-department">HR Department</div>
+            </div>
+        """)
 
         st.divider()
 
-        st.markdown("### Target audience")
+        st.html('<h3 class="announcement-audience-heading">Target audience</h3>')
+
         st.selectbox(
             "Recipients",
-            [
-                "Employee",
-                "Manager",
-                "Team Lead",
-            ],
+            ["Employee", "Manager", "Team Lead"],
             key="audience",
             label_visibility="collapsed",
         )
 
-        st.caption(
-            "Select the employee group that should receive the announcement."
-        )
+        st.html("""
+            <div class="announcement-audience-help">
+                Select the employee group that should receive the announcement.
+            </div>
+        """)
 
         st.divider()
 
