@@ -5,7 +5,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-API_URL = os.getenv("API_BASE_URL", "https://nexora-8xng.onrender.com").rstrip("/")
+API_URL = os.getenv("API_URL")
 
 def register():
     col_back, col_space = st.columns([1, 5])
