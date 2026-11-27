@@ -29,8 +29,8 @@ notification_queue = queue.Queue()
  
 websocket_thread = None
 websocket_lock = threading.Lock()
- 
-WS_URL = "ws://127.0.0.1:8000/ws/ats/notifications"
+x= os.getenv("WS_URL")
+WS_URL = f"{x}/ws/ats/notifications"
  
  
 # =========================================================
