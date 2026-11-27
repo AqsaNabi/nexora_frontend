@@ -1,15 +1,18 @@
 import streamlit as st
 import html
 import requests 
+import base64
+import os
+from dotenv import load_dotenv
 from detail_dash_func import (
     fetch_dashboard_data,
     fetch_applications,
     start_websocket,
     notification_queue
 )
-from dotenv import load_dotenv
-import os
+
 load_dotenv()
+
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -697,7 +700,6 @@ def detail_dashboard_function():
  
                         filtered_applications.append(application)
  
-
                 if filtered_applications:
                     
                     st.write("") # spacing
@@ -729,6 +731,7 @@ def detail_dashboard_function():
                         col1.write(application.get("full_name", "N/A"))
                         col2.write(application.get("phone", "N/A"))
                         col3.write(application.get("email", "N/A"))
+                        
                         with col4:
                             if resume_uploaded and application_id is not None:
                                 if st.button("Load PDF", key=f"view_{application_id}"):
@@ -740,8 +743,7 @@ def detail_dashboard_function():
                                     with st.spinner("Fetching PDF..."):
                                         res = requests.get(url, headers=headers)
                                         if res.status_code == 200:
-                                            import base64
-                                            # Convert to base64
+                                            # We use the globally imported base64 here!
                                             base64_pdf = base64.b64encode(res.content).decode('utf-8')
                                             st.session_state[f"pdf_b64_{application_id}"] = base64_pdf
                                         else:
@@ -760,8 +762,7 @@ def detail_dashboard_function():
                                     key=f"dl_{application_id}"
                                 )
                                 
-                                # 2. The Open in New Tab Button (Uses Javascript)
-                                # We use components.html to execute a tiny script that opens the PDF in a new tab
+                                # 2. The Open in New Tab Button
                                 import streamlit.components.v1 as components
                                 html_code = f"""
                                     <button onclick="openPdf()" style="width: 100%; padding: 8px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-family: sans-serif; font-size: 14px; margin-top: 5px;">
@@ -777,6 +778,7 @@ def detail_dashboard_function():
                                     </script>
                                 """
                                 components.html(html_code, height=45)
+                                
                         with col5:
                             if str(formatted_score).endswith("%"):
                                 st.markdown(f"<span style='color:#16A34A;font-weight:bold;'>{formatted_score}</span>", unsafe_allow_html=True)
@@ -786,17 +788,14 @@ def detail_dashboard_function():
                         st.divider()
                     
                 else:
-                    # This is the fix for Issue 2: Handling empty applications properly
+                    # Handling empty search results
                     if search_query:
                         st.warning("No candidates match your search.")
                     else:
                         st.info("No applications have been submitted for this job yet.")
- 
             else:
- 
-                st.info(
-                    "No applications have been submitted for this job yet."
-                )
+                # FIX FOR THE RED ERROR: Handling zero applications for the job
+                st.info("📭 No applicants have registered for this job yet.")
  
         # ====================================================
         # 9. FOOTER
