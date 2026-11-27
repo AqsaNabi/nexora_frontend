@@ -5,7 +5,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-API_URL = os.getenv("API_BASE_URL", "https://nexora-8xng.onrender.com").rstrip("/")
+API_URL = os.getenv("API_URL")
 
 FRONTEND_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(FRONTEND_DIR, "lo.png")
