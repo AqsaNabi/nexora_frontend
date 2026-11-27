@@ -18,21 +18,46 @@ load_dotenv()
 # ============================================================
  
 def display_sidebar():
- 
     with st.sidebar:
- 
-        st.markdown("## HELLO HR!")
-        st.caption("HR Department")
-        st.divider()
- 
         if st.button(
-            "← Back to Main Dashboard",
+            "←Back",
             key="back_to_dashboard",
-            use_container_width=True
+            type="primary",
+            use_container_width=True,
         ):
- 
             st.session_state.page = "dashboard"
             st.rerun()
+ 
+        st.divider()
+ 
+        profile_pic = st.session_state.get("profile_picture")
+ 
+        if profile_pic:
+            try:
+                with st.container(
+                    key="policy_profile_photo",
+                    horizontal=True,
+                    horizontal_alignment="center",
+                ):
+                    st.image(profile_pic, width=112)
+            except Exception:
+                pass
+ 
+        full_name = html.escape(
+            str(st.session_state.get("full_name", "HR Administrator"))
+        )
+ 
+        st.html(f"""
+            <div class="policy-profile-details">
+                <div class="policy-profile-name">{full_name}</div>
+                <div class="policy-profile-department">
+                    Human Resources Department
+                </div>
+            </div>
+        """)
+ 
+        st.divider()
+ 
  
  
 # ============================================================
@@ -103,17 +128,17 @@ def detail_dashboard_function():
                 /* Header */
  
                 .ta-header {
-                    background: linear-gradient(
-                        110deg,
-                        #EA580C, /* Deep orange */
-                        #F97316, /* Bright orange */
-                        #FDBA74  /* Soft peach */
-                    );
-                    padding: 25px 30px;
-                    border-radius: 15px;
-                    margin-bottom: 25px;
-                    box-shadow: 0 4px 6px rgba(234, 88, 12, 0.15);
-                }
+                background: linear-gradient(
+                    110deg,
+                    #FF4B4B,
+                    #FF4B4B,
+                    #FF4B4B
+                );
+                padding: 25px 30px;
+                border-radius: 15px;
+                margin-bottom: 25px;
+                box-shadow: 0 4px 6px rgba(127, 29, 29, 0.15);
+            }
  
                 .ta-title {
                     color: #ffffff !important;
@@ -131,7 +156,7 @@ def detail_dashboard_function():
                 /* Section headings */
  
                 .section-heading {
-                    color: #C2410C !important; /* Deep orange */
+                    color: #FF4B4B !important; /* Deep orange */
                     font-size: 21px;
                     font-weight: 750;
                     margin-top: 15px;
@@ -143,9 +168,9 @@ def detail_dashboard_function():
                 .application-form-btn {
                     display: inline-block;
                     background: linear-gradient(
-                        110deg,
-                        #F97316,
-                        #EA580C
+                         110deg,
+                        #FF4B4B,
+                        #FF4B4B
                     );
                     color: white !important;
                     padding: 11px 20px;
@@ -160,8 +185,8 @@ def detail_dashboard_function():
                 .application-form-btn:hover {
                     background: linear-gradient(
                         110deg,
-                        #EA580C,
-                        #C2410C
+                        #FF4B4B,
+                        #FF4B4B
                     );
                     transform: translateY(-1px);
                 }
@@ -170,7 +195,7 @@ def detail_dashboard_function():
  
                 .footer {
                     text-align: center;
-                    color: #9A7B66 !important;
+                    color: #FF4B4B !important;
                     font-size: 12px;
                     padding: 25px 0 5px 0;
                     margin-top: 30px;
@@ -181,20 +206,20 @@ def detail_dashboard_function():
  
                 div[data-testid="stMetric"] {
                     background: #ffffff !important;
-                    border: 1px solid #FED7AA;
+                    border: 1px solid #FF4B4B;
                     padding: 15px;
                     border-radius: 12px;
-                    box-shadow: 0 1px 3px rgba(194, 65, 12, 0.06);
+                    box-shadow: 0 1px 3px rgba(127, 29, 29, 0.06);;
                 }
  
                 div[data-testid="stMetric"] label,
                 div[data-testid="stMetric"] label p {
-                    color: #9A7B66 !important;
+                    color: #FF4B4B !important;
                 }
  
                 div[data-testid="stMetric"] [data-testid="stMetricValue"],
                 div[data-testid="stMetric"] [data-testid="stMetricValue"] div {
-                    color: #C2410C !important;
+                    color: #FF4B4B !important;
                 }
  
                 /* General text visibility */
@@ -216,7 +241,7 @@ def detail_dashboard_function():
                 .stMultiSelect label,
                 .stDateInput label,
                 .stNumberInput label {
-                    color: #C2410C !important;
+                    color: #FF4B4B !important;
                 }
  
                 /* Selected dropdown value */
@@ -234,8 +259,8 @@ def detail_dashboard_function():
  
                 div[data-testid="stSelectbox"] label,
                 div[data-testid="stSelectbox"] label * {
-                    color: #C2410C !important;
-                    -webkit-text-fill-color: #C2410C !important;
+                    color: #FF4B4B !important;
+                    -webkit-text-fill-color: #FF4B4B !important;
                 }
  
                 /* Dropdown options */
@@ -252,7 +277,7 @@ def detail_dashboard_function():
  
                 div[data-testid="stVerticalBlockBorderWrapper"] {
                     color: #3A2A1E !important;
-                    border: 1px solid #FED7AA !important;
+                    border: 1px solid #FF4B4B !important;
                     border-radius: 12px;
                 }
  
@@ -266,7 +291,7 @@ def detail_dashboard_function():
  
                 input {
                     color: #3A2A1E !important;
-                    border-color: #FED7AA !important;
+                    border-color: #FF4B4B !important;
                 }
  
                 /* Tables */
@@ -276,8 +301,8 @@ def detail_dashboard_function():
                 }
  
                 th {
-                    color: #C2410C !important;
-                    border-bottom: 2px solid #FED7AA !important;
+                    color: #FF4B4B !important;
+                    border-bottom: 2px solid #FF4B4B !important;
                 }
  
                 td {
@@ -286,58 +311,39 @@ def detail_dashboard_function():
  
                 /* Sidebar CSS */
  
-                [data-testid="stSidebar"] {
-                    background: linear-gradient(
-                        180deg,
-                        #FFF3E6 0%,
-                        #FFE8D1 55%,
-                        #FED7AA 100%
-                    ) !important;
-                    border-right: 1px solid #FDBA74 !important;
+                        .st-key-policy_profile_photo img {
+                    display: block;
+                    width: 112px;
+                    max-width: 100%;
+                    height: auto;
+                    aspect-ratio: 1 / 1;
+                    object-fit: cover;
+                    object-position: center;
+                    border-radius: 50%;
+                    border: 0;
                 }
  
-                [data-testid="stSidebar"] h1,
-                [data-testid="stSidebar"] h2,
-                [data-testid="stSidebar"] h3,
-                [data-testid="stSidebar"] p,
-                [data-testid="stSidebar"] label,
-                [data-testid="stSidebar"] span,
-                [data-testid="stSidebar"] .stMarkdown {
-                    color: #7C2D12 !important;
-                }
- 
-                [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
-                    color: #9A5B3A !important;
-                }
- 
-                [data-testid="stSidebar"] hr {
-                    border-color: rgba(194, 65, 12, 0.25) !important;
-                }
- 
-                [data-testid="stSidebar"] div.stButton > button {
+                .policy-profile-details {
                     width: 100%;
-                    background: linear-gradient(
-                        135deg,
-                        #F97316,
-                        #EA580C
-                    ) !important;
-                    color: white !important;
-                    border: 1px solid rgba(255,255,255,0.35) !important;
-                    border-radius: 11px !important;
+                    text-align: center;
+                    overflow-wrap: anywhere;
                 }
  
-                [data-testid="stSidebar"] div.stButton > button:hover {
-                    background: linear-gradient(
-                        135deg,
-                        #EA580C,
-                        #C2410C
-                    ) !important;
+                .policy-profile-name {
+                    font-weight: 700;
                 }
  
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+                .policy-profile-department {
+                    margin-top: 4px;
+                    font-size: 0.875rem;
+                    opacity: 0.7;
+                }
+               
+       
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
  
         # ====================================================
         # 2. HEADER
@@ -353,6 +359,7 @@ def detail_dashboard_function():
             '</div>',
             unsafe_allow_html=True
         )
+ 
  
         # ====================================================
         # 3. FETCH DASHBOARD DATA
