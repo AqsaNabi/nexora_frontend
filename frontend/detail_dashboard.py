@@ -731,7 +731,7 @@ def detail_dashboard_function():
                         col3.write(application.get("email", "N/A"))
                         with col4:
                             if resume_uploaded and application_id is not None:
-                                if st.button("View PDF", key=f"view_{application_id}"):
+                                if st.button("Load PDF", key=f"view_{application_id}"):
                                     token = st.session_state.get("token")
                                     headers = {"Authorization": f"Bearer {token}"}
                                     api_base = API_URL or "https://hrms-tqkf.onrender.com" 
@@ -740,21 +740,43 @@ def detail_dashboard_function():
                                     with st.spinner("Fetching PDF..."):
                                         res = requests.get(url, headers=headers)
                                         if res.status_code == 200:
-                                            import tempfile
-                                            # Create a temporary file to save the PDF
-                                            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-                                                tmp_file.write(res.content)
-                                                tmp_file_path = tmp_file.name
-                                            
-                                            # Store the path in session state
-                                            st.session_state[f"pdf_path_{application_id}"] = tmp_file_path
+                                            import base64
+                                            # Convert to base64
+                                            base64_pdf = base64.b64encode(res.content).decode('utf-8')
+                                            st.session_state[f"pdf_b64_{application_id}"] = base64_pdf
                                         else:
                                             st.error("Failed to load PDF.")
                             
-                            # Use Streamlit's native PDF viewer (st.pdf)
-                            if st.session_state.get(f"pdf_path_{application_id}"):
-                                # Streamlit's st.pdf takes a file path or bytes
-                                st.pdf(st.session_state[f"pdf_path_{application_id}"], height=500)
+                            # If we have the base64 data, show the buttons
+                            if st.session_state.get(f"pdf_b64_{application_id}"):
+                                b64_data = st.session_state[f"pdf_b64_{application_id}"]
+                                
+                                # 1. The Download Button
+                                st.download_button(
+                                    label="📥 Download",
+                                    data=base64.b64decode(b64_data),
+                                    file_name=f"resume_{application_id}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_{application_id}"
+                                )
+                                
+                                # 2. The Open in New Tab Button (Uses Javascript)
+                                # We use components.html to execute a tiny script that opens the PDF in a new tab
+                                import streamlit.components.v1 as components
+                                html_code = f"""
+                                    <button onclick="openPdf()" style="width: 100%; padding: 8px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-family: sans-serif; font-size: 14px; margin-top: 5px;">
+                                        ↗ Open Fullscreen
+                                    </button>
+                                    <script>
+                                        function openPdf() {{
+                                            var pdfWindow = window.open("");
+                                            pdfWindow.document.write(
+                                                "<iframe width='100%' height='100%' src='data:application/pdf;base64,{b64_data}'></iframe>"
+                                            );
+                                        }}
+                                    </script>
+                                """
+                                components.html(html_code, height=45)
                         with col5:
                             if str(formatted_score).endswith("%"):
                                 st.markdown(f"<span style='color:#16A34A;font-weight:bold;'>{formatted_score}</span>", unsafe_allow_html=True)
