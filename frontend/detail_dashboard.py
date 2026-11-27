@@ -10,6 +10,7 @@ from detail_dash_func import (
 from dotenv import load_dotenv
 import os
 load_dotenv()
+
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -697,7 +698,6 @@ def detail_dashboard_function():
  
                         filtered_applications.append(application)
  
-
                 if filtered_applications:
                     
                     st.write("") # spacing
@@ -768,17 +768,14 @@ def detail_dashboard_function():
                         st.divider()
                     
                 else:
-                    # This is the fix for Issue 2: Handling empty applications properly
+                    # Handling empty search results or no applications
                     if search_query:
                         st.warning("No candidates match your search.")
                     else:
                         st.info("No applications have been submitted for this job yet.")
- 
             else:
- 
-                st.info(
-                    "No applications have been submitted for this job yet."
-                )
+                # Handling zero applications for the job
+                st.info("No applications have been submitted for this job yet.")
  
         # ====================================================
         # 9. FOOTER
