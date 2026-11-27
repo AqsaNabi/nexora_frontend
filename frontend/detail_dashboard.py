@@ -36,13 +36,40 @@ def display_sidebar():
 # MAIN DASHBOARD FUNCTION
 # ============================================================
  
+ 
+# ============================================================
+# SIDEBAR
+# ============================================================
+ 
+def display_sidebar():
+ 
+    with st.sidebar:
+ 
+        st.markdown("## HELLO HR!")
+        st.caption("HR Department")
+        st.divider()
+ 
+        if st.button(
+            "← Back to Main Dashboard",
+            key="back_to_dashboard",
+            use_container_width=True
+        ):
+ 
+            st.session_state.page = "dashboard"
+            st.rerun()
+ 
+ 
+# ============================================================
+# MAIN DASHBOARD FUNCTION
+# ============================================================
+ 
 def detail_dashboard_function():
  
     # ========================================================
     # BACKEND CONFIGURATION
     # ========================================================
     
-    API_URL = os.getenv("API")
+    API_URL = os.getenv("API_URL")
  
     # Start WebSocket connection
     token = st.session_state.get("token")
