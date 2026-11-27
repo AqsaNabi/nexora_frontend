@@ -1,6 +1,6 @@
 import streamlit as st
 import html
- 
+import requests 
 from detail_dash_func import (
     fetch_dashboard_data,
     fetch_applications,
@@ -10,33 +10,6 @@ from detail_dash_func import (
 from dotenv import load_dotenv
 import os
 load_dotenv()
-# ============================================================
-# SIDEBAR
-# ============================================================
- 
-def display_sidebar():
- 
-    with st.sidebar:
- 
-        st.markdown("## HELLO HR!")
-        st.caption("HR Department")
-        st.divider()
- 
-        if st.button(
-            "← Back to Main Dashboard",
-            key="back_to_dashboard",
-            use_container_width=True
-        ):
- 
-            st.session_state.page = "dashboard"
-            st.rerun()
- 
- 
-# ============================================================
-# MAIN DASHBOARD FUNCTION
-# ============================================================
- 
- 
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -724,161 +697,80 @@ def detail_dashboard_function():
  
                         filtered_applications.append(application)
  
+
                 if filtered_applications:
- 
-                    table_data = []
- 
+                    
+                    st.write("") # spacing
+                    # Create header row
+                    h1, h2, h3, h4, h5 = st.columns([2, 1.5, 2.5, 1.5, 1.5])
+                    h1.markdown("**Candidate Name**")
+                    h2.markdown("**Phone**")
+                    h3.markdown("**Email**")
+                    h4.markdown("**Resume**")
+                    h5.markdown("**AI Match Score**")
+                    st.divider()
+
                     for application in filtered_applications:
- 
-                        candidate_score = application.get(
-                            "candidate_score"
-                        )
- 
+                        candidate_score = application.get("candidate_score")
                         if candidate_score is None:
- 
                             formatted_score = "N/A"
- 
                         else:
- 
                             try:
- 
-                                formatted_score = (
-                                    f"{float(candidate_score):.2f}%"
-                                )
- 
+                                formatted_score = f"{float(candidate_score):.2f}%"
                             except (ValueError, TypeError):
- 
                                 formatted_score = str(candidate_score)
- 
-                        # Check whether candidate uploaded a resume
- 
-                        resume_uploaded = bool(
-                            application.get("has_resume", False)
-                        )
- 
-                        # Create resume URL
- 
-                        resume_url = None
- 
-                        if resume_uploaded:
- 
-                            application_id = application.get(
-                                "application_id"
-                            )
- 
-                            if application_id is not None:
- 
-                                resume_url = (
-                                    f"{API_URL}/api/ats/applications/"
-                                    f"{application_id}/resume"
+
+                        resume_uploaded = bool(application.get("has_resume", False))
+                        application_id = application.get("application_id")
+
+                        # Create a row using columns
+                        col1, col2, col3, col4, col5 = st.columns([2, 1.5, 2.5, 1.5, 1.5])
+                        
+                        col1.write(application.get("full_name", "N/A"))
+                        col2.write(application.get("phone", "N/A"))
+                        col3.write(application.get("email", "N/A"))
+                        
+                        with col4:
+                            if resume_uploaded and application_id is not None:
+                                # Use a unique key for the button
+                                if st.button("View PDF", key=f"resume_{application_id}"):
+                                    # Fetch token from session state
+                                    token = st.session_state.get("token")
+                                    headers = {"Authorization": f"Bearer {token}"}
+                                    
+                                    # API_URL is already loaded from your environment variables at the top
+                                    url = f"{API_URL}/api/ats/applications/{application_id}/resume"
+                                    
+                                    with st.spinner("Fetching..."):
+                                        res = requests.get(url, headers=headers)
+                                        if res.status_code == 200:
+                                            # Store PDF in session state to show download button
+                                            st.session_state[f"pdf_data_{application_id}"] = res.content
+                                            st.session_state[f"show_pdf_{application_id}"] = True
+                                        elif res.status_code == 401:
+                                            st.error("Session expired. Please log in again.")
+                                        else:
+                                            st.error(f"Error {res.status_code}: Could not load PDF.")
+                            
+                            # If the PDF was fetched, show the download button
+                            if st.session_state.get(f"show_pdf_{application_id}"):
+                                st.download_button(
+                                    label="📥 Save PDF",
+                                    data=st.session_state[f"pdf_data_{application_id}"],
+                                    file_name=f"resume_{application_id}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_{application_id}"
                                 )
- 
-                        table_data.append({
- 
-                            "Candidate Name": application.get(
-                                "full_name", "N/A"
-                            ),
- 
-                            "Phone": application.get(
-                                "phone", "N/A"
-                            ),
- 
-                            "Email": application.get(
-                                "email", "N/A"
-                            ),
- 
-                            "Resume": resume_url,
- 
-                            "AI Match Score": formatted_score
- 
-                        })
- 
-                    # ============================================
-                    # BUILD TABLE WITH CLICKABLE RESUME LINKS
-                    # ============================================
- 
-                    table_html = """
-                    <table style="
-                        width:100%;
-                        border-collapse:collapse;
-                        background:white;
-                    ">
-                    <thead>
-                    <tr>
-                        <th style="padding:12px;text-align:left;">Candidate Name</th>
-                        <th style="padding:12px;text-align:left;">Phone</th>
-                        <th style="padding:12px;text-align:left;">Email</th>
-                        <th style="padding:12px;text-align:left;">Resume</th>
-                        <th style="padding:12px;text-align:left;">AI Match Score</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    """
- 
-                    for row in table_data:
- 
-                        resume_url = row["Resume"]
- 
-                        if resume_url:
- 
-                            resume_cell = (
-                                f'<a href="{html.escape(resume_url, quote=True)}" '
-                                f'target="_blank" rel="noopener noreferrer" '
-                                f'style="color:#F97316;font-weight:bold;text-decoration:none;">'
-                                f'View PDF</a>'
-                            )
- 
-                        else:
- 
-                            resume_cell = "None"
- 
-                        score_style = (
-                            "color:#16A34A;font-weight:bold;"
-                            if str(row["AI Match Score"]).endswith("%")
-                            else ""
-                        )
- 
-                        table_html += "<tr>"
- 
-                        table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
-                            f'{html.escape(str(row["Candidate Name"]))}</td>'
-                        )
- 
-                        table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
-                            f'{html.escape(str(row["Phone"]))}</td>'
-                        )
- 
-                        table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
-                            f'{html.escape(str(row["Email"]))}</td>'
-                        )
- 
-                        table_html += (
-                            '<td style="padding:12px;border-bottom:1px solid #FED7AA;">'
-                            f'{resume_cell}</td>'
-                        )
- 
-                        table_html += (
-                            f'<td style="padding:12px;border-bottom:1px solid #FED7AA;{score_style}">'
-                            f'{html.escape(str(row["AI Match Score"]))}</td>'
-                        )
- 
-                        table_html += "</tr>"
- 
-                    table_html += """
-                    </tbody>
-                    </table>
-                    """
- 
-                    st.markdown(
-                        table_html,
-                        unsafe_allow_html=True
-                    )
- 
+                                
+                        with col5:
+                            if str(formatted_score).endswith("%"):
+                                st.markdown(f"<span style='color:#16A34A;font-weight:bold;'>{formatted_score}</span>", unsafe_allow_html=True)
+                            else:
+                                st.write(formatted_score)
+                        
+                        st.divider()
+                    
                 else:
- 
                     st.info("No candidates match your search.")
  
             else:
