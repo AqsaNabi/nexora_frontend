@@ -732,34 +732,31 @@ def detail_dashboard_function():
                         
                         with col4:
                             if resume_uploaded and application_id is not None:
-                                # Use a unique key for the button
-                                if st.button("View PDF", key=f"resume_{application_id}"):
-                                    # Fetch token from session state
+                                if st.button("View PDF", key=f"view_{application_id}"):
                                     token = st.session_state.get("token")
                                     headers = {"Authorization": f"Bearer {token}"}
+                                    api_base = API_URL or "https://hrms-tqkf.onrender.com" 
+                                    url = f"{api_base}/api/ats/applications/{application_id}/resume"
                                     
-                                    # API_URL is already loaded from your environment variables at the top
-                                    url = f"{API_URL}/api/ats/applications/{application_id}/resume"
-                                    
-                                    with st.spinner("Fetching..."):
+                                    with st.spinner("Fetching PDF..."):
                                         res = requests.get(url, headers=headers)
                                         if res.status_code == 200:
-                                            # Store PDF in session state to show download button
-                                            st.session_state[f"pdf_data_{application_id}"] = res.content
-                                            st.session_state[f"show_pdf_{application_id}"] = True
-                                        elif res.status_code == 401:
-                                            st.error("Session expired. Please log in again.")
+                                            import base64
+                                            # Convert to base64 to embed directly
+                                            base64_pdf = base64.b64encode(res.content).decode('utf-8')
+                                            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500" type="application/pdf"></iframe>'
+                                            
+                                            # Store in session state to keep it visible
+                                            st.session_state[f"pdf_html_{application_id}"] = pdf_display
                                         else:
-                                            st.error(f"Error {res.status_code}: Could not load PDF.")
+                                            st.error("Failed to load PDF.")
                             
-                            # If the PDF was fetched, show the download button
-                            if st.session_state.get(f"show_pdf_{application_id}"):
-                                st.download_button(
-                                    label="📥 Save PDF",
-                                    data=st.session_state[f"pdf_data_{application_id}"],
-                                    file_name=f"resume_{application_id}.pdf",
-                                    mime="application/pdf",
-                                    key=f"dl_{application_id}"
+                            # If the PDF is loaded, show it here natively!
+                            if st.session_state.get(f"pdf_html_{application_id}"):
+                                import streamlit.components.v1 as components
+                                components.html(
+                                    st.session_state[f"pdf_html_{application_id}"],
+                                    height=500
                                 )
                                 
                         with col5:
@@ -771,7 +768,11 @@ def detail_dashboard_function():
                         st.divider()
                     
                 else:
-                    st.info("No candidates match your search.")
+                    # This is the fix for Issue 2: Handling empty applications properly
+                    if search_query:
+                        st.warning("No candidates match your search.")
+                    else:
+                        st.info("No applications have been submitted for this job yet.")
  
             else:
  
